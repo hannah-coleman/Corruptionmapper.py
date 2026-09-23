@@ -1,0 +1,5 @@
+# Add one explicitly selected public URL per line.
+# Keep targets limited to records relevant to a defined audit question.
+# Examples are placeholders and are not fetched automatically.
+# https://example.gov/public-records/contract.pdf
+# https://example.gov/meeting-minutes/2024-01-15

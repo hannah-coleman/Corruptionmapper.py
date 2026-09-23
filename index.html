@@ -1,0 +1,201 @@
+bn6 <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A provenance-first OSINT research workspace for mapping public-record relationships.">
+  <title>Signal Ledger | OSINT research workspace</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style-professional.css">
+  <style>
+    .full-view{min-height:500px}.table-wrap{overflow-x:auto;padding:0 22px 22px}table{width:100%;border-collapse:collapse;font:12px Arial,sans-serif;text-align:left}th{font-size:10px;letter-spacing:1px;color:#7b837d;text-transform:uppercase;padding:12px 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}td{padding:16px 10px;border-bottom:1px solid var(--line);color:#65706b;white-space:nowrap}td strong{display:block;color:var(--ink);font-weight:normal}td small{display:block;color:#8a918d;margin-top:5px}.table-status{padding:5px 7px;font-size:10px}.table-status.sourced{background:#dcede5;color:#17675f}.table-status.review{background:#f5e5b7;color:#876a20}.request-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);margin:0 22px}.request-grid article{padding:24px 20px 26px 0;margin-right:20px;border-right:1px solid var(--line)}.request-grid article:last-child{border-right:0;margin-right:0}.request-step{font:11px Arial,sans-serif;color:#b4a176}.request-grid h3{font-size:18px;font-weight:normal;margin:13px 0 8px}.request-grid p{font:12px/1.55 Arial,sans-serif;color:#707a75;min-height:76px}.request-note{margin:7px 22px 22px;padding:16px;background:#f5edcf;border-left:3px solid #d5a942;font:12px/1.5 Arial,sans-serif;color:#606861}.request-note strong{display:block;color:var(--ink);margin-bottom:5px}.protocol-list{margin:0 22px;border-top:1px solid var(--line)}.protocol-list article{display:flex;gap:20px;align-items:start;padding:18px 0;border-bottom:1px solid var(--line)}.protocol-list article>span{font:11px Arial,sans-serif;color:#b4a176;padding-top:3px}.protocol-list h3{font-size:16px;font-weight:normal;margin:0 0 5px}.protocol-list p{font:12px/1.5 Arial,sans-serif;color:#707a75;margin:0;max-width:720px}.protocol-list .quiet-button{margin-left:auto;white-space:nowrap;padding:8px 10px}@media(max-width:650px){.request-grid{grid-template-columns:1fr}.request-grid article{border-right:0;border-bottom:1px solid var(--line);margin:0;padding-right:0}.request-grid article:last-child{border-bottom:0}.request-grid p{min-height:0}.protocol-list article{display:block}.protocol-list .quiet-button{margin-top:12px}}
+  </style>
+  <style>
+    .search-results{background:var(--paper);border:1px solid var(--line);margin:-10px 0 18px;padding:8px;display:grid;gap:4px;font:11px Arial,sans-serif}.search-result{border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;padding:9px;cursor:pointer}.search-result:last-child{border-bottom:0}.search-result strong{display:block;color:var(--ink);font-weight:normal}.search-result small{display:block;color:var(--muted);margin-top:3px}.search-results>span{padding:9px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div id="evidence-modal" class="modal" hidden>
+    <div class="modal-content">
+      <span class="modal-close">×</span>
+      <h2>Add Evidence Record</h2>
+      <form id="evidence-form">
+        <div class="form-group">
+          <label for="evidence-title">Record Title</label>
+          <input type="text" id="evidence-title" name="title" placeholder="e.g., City Council Minutes 2026-08" required>
+        </div>
+        <div class="form-group">
+          <label for="evidence-url">Source URL or Document Path</label>
+          <input type="url" id="evidence-url" name="url" placeholder="https://example.com/document">
+        </div>
+        <div class="form-group">
+          <label for="evidence-summary">Summary</label>
+          <textarea id="evidence-summary" name="summary" placeholder="Brief description of what this record contains and why it matters to your research." rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label for="evidence-citation-page">Page or timestamp</label><input id="evidence-citation-page" name="citation_page" placeholder="e.g., p. 4 or 12:41"></div>
+          <div class="form-group"><label for="evidence-citation-section">Section or item</label><input id="evidence-citation-section" name="citation_section" placeholder="e.g., Agenda item 7"></div>
+        </div>
+        <div class="form-group"><label for="evidence-citation-excerpt">Exact excerpt</label><textarea id="evidence-citation-excerpt" name="citation_excerpt" placeholder="Quote only the relevant passage; preserve the original record separately." rows="2"></textarea></div>
+        <div class="form-group"><label for="evidence-location-label">Public location reference</label><input id="evidence-location-label" name="location_label" placeholder="Public building, parcel, intersection, or map feature"></div>
+        <div class="form-row"><div class="form-group"><label for="evidence-latitude">Latitude</label><input id="evidence-latitude" name="latitude" inputmode="decimal" placeholder="e.g., 36.055"></div><div class="form-group"><label for="evidence-longitude">Longitude</label><input id="evidence-longitude" name="longitude" inputmode="decimal" placeholder="e.g., -90.490"></div></div>
+        <div class="form-row"><div class="form-group"><label for="evidence-geographic-source">Map or imagery source URL</label><input id="evidence-geographic-source" name="geographic_source_url" type="url" placeholder="Public map, GIS, imagery, or official plan URL"></div><div class="form-group"><label for="evidence-imagery-date">Map or imagery capture date</label><input id="evidence-imagery-date" name="imagery_captured_at" type="date"></div></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="evidence-kind">Record Type</label>
+            <select id="evidence-kind" name="kind">
+              <option value="primary-source">Primary Source (government/official)</option>
+              <option value="secondary-reporting">Secondary Reporting (news, analysis)</option>
+              <option value="foia-response">FOIA Response</option>
+              <option value="personal-observation">Observation</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="evidence-protection">Sensitivity Level</label>
+            <select id="evidence-protection" name="protection">
+              <option value="public">Public</option>
+              <option value="restricted">Restricted</option>
+              <option value="counsel-only">Counsel Only</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="primary-button">＋ Save Evidence Record</button>
+      </form>
+    </div>
+  </div>
+  <div id="claim-modal" class="modal" hidden>
+    <div class="modal-content">
+      <button type="button" class="modal-close" data-action="close-claim-modal" aria-label="Close">×</button>
+      <h2>Add Research Claim</h2>
+      <form id="claim-form">
+        <div class="form-group"><label for="claim-statement">Testable statement or question</label><textarea id="claim-statement" name="statement" rows="3" placeholder="Example: Is there a documented underground passage at this address?" required></textarea></div>
+        <div class="form-group"><label for="claim-sources">Supporting evidence</label><select id="claim-sources" name="source_ids" multiple size="4" aria-describedby="claim-sources-help"></select><small id="claim-sources-help">Choose every record that directly supports this question or theory.</small></div>
+        <div class="form-group"><label for="claim-alternatives">Alternative explanations</label><textarea id="claim-alternatives" name="alternatives" rows="2" placeholder="What else could explain the same records?"></textarea></div>
+        <div class="form-group"><label for="claim-next-test">Next test</label><textarea id="claim-next-test" name="next_test" rows="2" placeholder="Name the document, custodian, inspection, or comparison needed."></textarea></div>
+        <div class="form-group"><label for="claim-status">Research status</label><select id="claim-status" name="status"><option value="question">Question</option><option value="working-hypothesis">Working hypothesis</option><option value="finding">Proposed finding (requires review and 2 cited records)</option></select></div>
+        <button type="submit" class="primary-button">Save research claim</button>
+      </form>
+    </div>
+  </div>
+  <div id="review-modal" class="modal" hidden>
+    <div class="modal-content">
+      <button type="button" class="modal-close" data-action="close-review-modal" aria-label="Close">×</button>
+      <h2>Review Research Claim</h2>
+      <form id="review-form">
+        <input id="review-claim-id" type="hidden">
+        <div class="form-group"><label for="reviewer">Reviewer</label><input id="reviewer" name="reviewer" required></div>
+        <div class="form-group"><label for="review-disposition">Disposition</label><select id="review-disposition" name="disposition"><option value="needs-review">Needs review</option><option value="supported">Supported</option><option value="contradicted">Contradicted</option><option value="insufficient-evidence">Insufficient evidence</option><option value="counsel-review">Counsel review</option></select></div>
+        <div class="form-group"><label for="review-rationale">Rationale</label><textarea id="review-rationale" name="rationale" rows="2" required></textarea></div>
+        <div class="form-group"><label for="review-counterevidence">Counterevidence considered</label><textarea id="review-counterevidence" name="counterevidence" rows="2" required></textarea></div>
+        <div class="form-group"><label for="review-next-action">Next action</label><textarea id="review-next-action" name="next_action" rows="2" required></textarea></div>
+        <button type="submit" class="primary-button">Record review</button>
+      </form>
+    </div>
+  </div>
+  <div id="request-modal" class="modal" hidden>
+    <div class="modal-content">
+      <button type="button" class="modal-close" data-action="close-request-modal" aria-label="Close">×</button>
+      <h2>Add Records Request</h2>
+      <form id="request-form">
+        <div class="form-row"><div class="form-group"><label for="request-agency">Agency</label><input id="request-agency" name="agency" required></div><div class="form-group"><label for="request-custodian">Custodian</label><input id="request-custodian" name="custodian"></div></div>
+        <div class="form-group"><label for="request-description">Records requested</label><textarea id="request-description" name="description" rows="3" placeholder="Identify records, date range, and preferred format. Do not request conclusions." required></textarea></div>
+        <div class="form-row"><div class="form-group"><label for="request-date-range">Date range</label><input id="request-date-range" name="date_range" placeholder="YYYY-MM-DD to YYYY-MM-DD"></div><div class="form-group"><label for="request-tracking">Tracking number</label><input id="request-tracking" name="tracking_number"></div></div>
+        <div class="form-row"><div class="form-group"><label for="request-submitted">Submitted date</label><input id="request-submitted" name="submitted_at" type="date"></div><div class="form-group"><label for="request-deadline">Response deadline</label><input id="request-deadline" name="deadline" type="date"></div></div>
+        <div class="form-row"><div class="form-group"><label for="request-status">Status</label><select id="request-status" name="status"><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="response-received">Response received</option><option value="denied">Denied</option></select></div><div class="form-group"><label for="request-counsel">Counsel review</label><select id="request-counsel" name="counsel_review"><option value="not-requested">Not requested</option><option value="pending">Pending</option><option value="reviewed">Reviewed</option></select></div></div>
+        <button type="submit" class="primary-button">Save request log</button>
+      </form>
+    </div>
+  </div>
+  <div id="response-evidence-modal" class="modal" hidden>
+    <div class="modal-content">
+      <button type="button" class="modal-close" data-action="close-response-evidence-modal" aria-label="Close">×</button>
+      <h2>Link Preserved Response</h2>
+      <form id="response-evidence-form">
+        <input id="response-request-id" type="hidden">
+        <div class="form-group"><label for="response-evidence-id">Preserved evidence record</label><select id="response-evidence-id" name="evidence_id" required></select></div>
+        <button type="submit" class="primary-button">Link response evidence</button>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; border-radius: 8px; padding: 32px; max-width: 600px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+    .modal-close { position: absolute; top: 16px; right: 16px; font-size: 28px; cursor: pointer; color: #999; }
+    .modal h2 { margin-top: 0; margin-bottom: 24px; font-size: 24px; color: var(--ink); }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: bold; text-transform: uppercase; color: #666; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 14px; }
+    .form-group textarea { resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .exculpatory-evidence { border-left: 4px solid #17675f; background: #dcede5; }
+    .exculpatory-evidence strong::before { content: '✓ '; color: #17675f; }
+  </style>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">SL</span><div><strong>Signal Ledger</strong><span>OSINT research workspace</span></div></div>
+      <nav aria-label="Primary navigation">
+        <button class="nav-item active" data-view="map"><span>⌘</span>Connection map</button>
+        <button class="nav-item" data-view="evidence"><span>▤</span>Evidence index</button>
+        <button class="nav-item" data-view="claims"><span>◇</span>Claims ledger</button>
+        <button class="nav-item" data-view="audit"><span>◎</span>Collection audit</button>
+        <button class="nav-item" data-view="changes"><span>↻</span>Source changes</button>
+        <button class="nav-item" data-view="timeline"><span>≡</span>Chronology</button>
+        <button class="nav-item" data-view="auditor"><span>✓</span>Auditor</button>
+        <button class="nav-item" data-view="requests"><span>↗</span>Records requests</button>
+          <button class="nav-item" data-view="sources"><span>◈</span>Source catalog</button>
+          <button class="nav-item" data-view="protocol"><span>◎</span>Audit protocol</button>
+      </nav>
+      <div class="case-card"><span class="eyebrow">ACTIVE CASE</span><strong>Paragould / Greene County review</strong><p>Working set · 18 records</p><button class="case-action">+ Add research set</button></div>
+      <div class="sidebar-footer"><span class="status-dot"></span>Local workspace only <button class="icon-button" aria-label="Settings">⚙</button></div>
+    </aside>
+    <main class="main-content">
+      <header class="topbar"><div><span class="eyebrow">RESEARCH / MUNICIPAL CONTRACTING REVIEW</span><h1>Connection map</h1></div><div class="top-actions"><input id="record-file" type="file" accept=".json,.csv" hidden><button class="quiet-button" id="import-records">Import records</button><button class="primary-button" id="trigger-collection-button">＋ Collect public sources</button></div></header>
+      <section class="notice"><span class="notice-icon">i</span><p><strong>Provenance first.</strong> This workspace records conduct and process, not guilt. It distinguishes sourced facts from hypotheses and preserves exculpatory information. Sample records are fictional and provided only to demonstrate the workflow.</p><button class="close-notice" aria-label="Dismiss notice">×</button></section>
+      <div class="toolbar"><label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search people, entities, sources..." aria-label="Search the research set"></label><div class="segmented"><button class="segment active">All</button><button class="segment">People</button><button class="segment">Entities</button></div><button class="filter-button">☷ Filters <span class="filter-count">2</span></button></div><div id="search-results" class="search-results" hidden></div>
+      <div id="map-view" class="view workspace-grid">
+        <section class="map-panel panel"><div class="panel-heading"><div><span class="eyebrow">RELATIONSHIP GRAPH</span><h2>What connects to what</h2></div><div class="legend"><span><i class="fact"></i>Sourced</span><span><i class="lead"></i>Unverified lead</span></div></div><div class="graph-wrap"><svg id="graph" viewBox="0 0 760 470" role="img" aria-label="Relationship graph of sample entities"></svg><div class="graph-hint">Select a node to inspect its evidence trail</div></div><div class="map-footer"><span><b id="node-count">8</b> nodes · <b>11</b> relationships</span><button class="text-button">＋ Add relationship</button></div></section>
+        <aside class="detail-panel panel"><div id="detail-content"></div></aside>
+      </div>
+        <section id="sources-view" class="view panel full-view" hidden>
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">LAWFUL OSINT SOURCE CATALOG</span>
+              <h2>Searchable now · requestable next</h2>
+            </div>
+            <span class="score" id="source-count">Loading</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Source family</th>
+                  <th>Category</th>
+                  <th>Access</th>
+                  <th>Discovery</th>
+                  <th>Next lawful route</th>
+                </tr>
+              </thead>
+              <tbody id="source-catalog-body">
+                <tr>
+                  <td colspan="5">Loading source catalog...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      <section id="evidence-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">EVIDENCE INDEX</span><h2>Every claim has a trail</h2></div><div class="top-actions"><input id="evidence-file" type="file" hidden><button id="preserve-file-button" class="quiet-button">Preserve local file</button><button id="add-evidence-button" class="primary-button">＋ Add evidence</button></div></div><div class="table-wrap"><table><thead><tr><th>Record</th><th>Type</th><th>Captured</th><th>Confidence</th><th>Linked nodes</th></tr></thead><tbody><tr><td colspan="5">Loading evidence…</td></tr></tbody></table></div></section>
+        <section id="claims-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">CLAIMS LEDGER</span><h2>Questions, theories, and tested findings</h2></div><div class="top-actions"><button id="print-counsel-packet" class="quiet-button">Open printable packet</button><button id="export-counsel-packet" class="quiet-button">Export counsel packet</button><button id="add-claim-button" class="primary-button">＋ Add claim</button></div></div><div id="research-queue" class="research-queue"><p>Calculating research queue...</p></div><div id="claims-list" class="claim-list"><p>Loading research claims...</p></div></section>
+        <section id="audit-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">AUTOMATED COLLECTION AUDIT</span><h2>Coverage, limits, and duplicate-content checks</h2></div><button id="run-approved-collection" class="primary-button">Run approved collection</button></div><div id="collection-audit" class="claim-list"><p>Loading collection audit...</p></div></section>
+        <section id="changes-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">SOURCE CHANGE DETECTION</span><h2>Observed changes between public captures</h2></div></div><div id="source-changes" class="claim-list"><p>Comparing source captures...</p></div></section>
+        <section id="timeline-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">CASE CHRONOLOGY</span><h2>Collection, evidence, and questions in order</h2></div></div><div id="timeline-list" class="timeline-list"><p>Loading chronology...</p></div></section>
+        <section id="auditor-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">INTEGRITY AUDITOR</span><h2>Append-only audit ledger verification</h2></div><div class="top-actions"><button id="harden-evidence-button" class="quiet-button">Harden local access</button><button id="create-backup-button" class="primary-button">Create verified backup</button></div></div><div id="security-status" class="claim-list"><p>Checking local access...</p></div><div id="backup-status" class="claim-list"><p>Checking backup status...</p></div><div id="auditor-status" class="claim-list"><p>Verifying audit ledger...</p></div></section>
+      <section id="requests-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">ARKANSAS PUBLIC RECORDS ROADMAP</span><h2>Turn an open question into a request</h2></div><span class="score">Verify current rules with counsel</span></div><div class="request-grid"><article><span class="request-step">01</span><h3>Define the record</h3><p>Describe the agency-held record, date range, custodian, and preferred format. Request records, not conclusions about a person.</p><button class="text-button">＋ Start a request</button></article><article><span class="request-step">02</span><h3>Use the right law</h3><p>For Paragould or Greene County, start with an Arkansas public-records request to the record-holding agency. Federal FOIA is for federal agencies.</p><button class="text-button">View jurisdiction notes</button></article><article><span class="request-step">03</span><h3>Preserve the response</h3><p>Log submission time, tracking number, correspondence, fees, redactions, and the exact files received back into the evidence index.</p><button class="text-button">＋ Add request log</button></article></div><div class="table-wrap"><table><thead><tr><th>Record category</th><th>Likely custodian</th><th>Ask for</th><th>Status</th></tr></thead><tbody><tr><td><strong>Contracts and payments</strong></td><td>City of Paragould / Greene County</td><td>Solicitations, bids, scoring, awards, amendments, invoices, payment register</td><td><span class="table-status review">Draft</span></td></tr><tr><td><strong>Meetings and decisions</strong></td><td>City Clerk / County Clerk</td><td>Agendas, minutes, attachments, recordings, attendance, posted notices</td><td><span class="table-status review">Draft</span></td></tr><tr><td><strong>Law-enforcement records</strong></td><td>Police department / Sheriff</td><td>Policies, incident logs, complaints, disciplinary findings, use-of-force records where releasable</td><td><span class="table-status review">Draft</span></td></tr><tr><td><strong>Business entities</strong></td><td>Arkansas Secretary of State</td><td>Formation filings, registered agent history, amendments, annual reports</td><td><span class="table-status sourced">Public search</span></td></tr></tbody></table></div><div class="request-note"><strong>Research guardrail</strong><span>Use exact dates and record descriptions, request segregable non-exempt portions, expect lawful redactions, and preserve denials for attorney review or any available appeal process. This tool is a research organizer, not legal advice.</span></div></section>
+      <section id="protocol-view" class="view panel full-view" hidden><div class="panel-heading"><div><span class="eyebrow">FIELD GUIDE / VERIFIED AUDIT</span><h2>Build a case that survives scrutiny</h2></div><span class="score">0 of 8 complete</span></div><div class="protocol-list"><article><span>01</span><div><h3>Write the audit question</h3><p>Choose one testable question, such as whether a procurement followed the published process or whether a disclosed relationship required recusal.</p></div><button class="quiet-button">Open worksheet</button></article><article><span>02</span><div><h3>Freeze the scope</h3><p>Set Paragould and Greene County, a date range, named agencies, and record types. Do not expand scope because a name appears in a document.</p></div><button class="quiet-button">Set scope</button></article><article><span>03</span><div><h3>Collect public social evidence lawfully</h3><p>Capture only publicly viewable posts, complaints, and videos using permitted access. Record the original URL, account name, post time, capture time, platform, and a hash or unchanged download when allowed.</p></div><button class="quiet-button">Add social source</button></article><article><span>04</span><div><h3>Build the source register</h3><p>For every item, record the issuing body, exact URL or file, publication date, capture date, page or paragraph, and local hash when possible.</p></div><button class="quiet-button">Open evidence index</button></article><article><span>05</span><div><h3>Separate fact from inference</h3><p>Label each statement as sourced fact, reasonable inference, or unresolved lead. A complaint, shared address, or meeting is not proof of misconduct.</p></div><button class="quiet-button">Review labels</button></article><article><span>06</span><div><h3>Request the missing records</h3><p>Ask the record custodian for narrowly described public records. Preserve fees, delays, exemptions, redactions, denials, and appeal deadlines.</p></div><button class="quiet-button">Open request roadmap</button></article><article><span>07</span><div><h3>Corroborate independently</h3><p>Confirm important claims with a second primary source, a separate custodian, or an on-the-record response. Log contradictions instead of hiding them.</p></div><button class="quiet-button">Add corroboration</button></article><article><span>08</span><div><h3>Run a pre-publication review</h3><p>Have counsel review privacy, defamation, privilege, sealed records, retaliation risk, platform terms, and the difference between an allegation and a proven finding.</p></div><button class="quiet-button">Create review task</button></article></div></section>
+      <section class="view bottom-grid"><div class="panel signal-panel"><div class="panel-heading"><div><span class="eyebrow">RESEARCH SIGNALS</span><h2>Prioritised next steps</h2></div><span class="score" id="discrepancy-count">Loading</span></div><div id="discrepancy-list" class="signal-list"><article><span class="signal-number">01</span><div><strong>Loading review queue…</strong><p>Waiting for live discrepancy data from the casefile.</p></div><span class="priority medium">Queued</span></article></div></div><div class="panel coverage-panel"><div class="panel-heading"><div><span class="eyebrow">SOURCE COVERAGE</span><h2>Evidence health</h2></div><button class="icon-button" aria-label="More source coverage options">⋮</button></div><div class="coverage-row"><div class="donut"><span>72%</span></div><div><strong>Good foundation</strong><p>13 of 18 records have a source URL and capture date.</p></div></div><div class="coverage-bars"><div><span>Primary sources <b>8</b></span><i><em style="width:72%"></em></i></div><div><span>Secondary reporting <b>5</b></span><i><em style="width:45%"></em></i></div><div><span>Unverified leads <b>5</b></span><i><em class="orange" style="width:32%"></em></i></div></div></div></section>
+    </main>
+  </div>
+  <script src="app-professional.js"></script>
+</body>
+</html>

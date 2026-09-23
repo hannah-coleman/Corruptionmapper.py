@@ -1,0 +1,28 @@
+[
+  {
+    "id": "record-001",
+    "subject": "Contract 2024-17",
+    "claim": "Awarded to Meridian Civic on 2024-03-14",
+    "field": "awardee",
+    "value": "Meridian Civic",
+    "agency": "City of Paragould",
+    "record_type": "procurement",
+    "event_date": "2024-03-14",
+    "published_at": "2024-03-15",
+    "captured_at": "2026-08-27T12:00:00Z",
+    "source_url": "https://example.gov/contracts/2024-17"
+  },
+  {
+    "id": "record-002",
+    "subject": "Contract 2024-17",
+    "claim": "Awarded to Civic Holdings on 2024-03-14",
+    "field": "awardee",
+    "value": "Civic Holdings",
+    "agency": "City of Paragould",
+    "record_type": "meeting-minutes",
+    "event_date": "2024-03-14",
+    "published_at": "2024-03-20",
+    "captured_at": "2026-08-27T12:01:00Z",
+    "source_url": "https://example.gov/minutes/2024-03-14"
+  }
+]

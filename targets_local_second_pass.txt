@@ -1,0 +1,55 @@
+# Second-pass local public-source targets for Paragould / Greene County / Arkansas.
+# These are official public sources and records routes to fill the local gap in the first scan.
+
+# City / municipal sources
+https://ar-paragould.civicplus.com/
+https://ar-paragould.civicplus.com/agenda-center
+https://ar-paragould.civicplus.com/boardmeetings
+https://ar-paragould.civicplus.com/bids
+https://ar-paragould.civicplus.com/finance
+https://ar-paragould.civicplus.com/municipalcode
+https://ar-paragould.civicplus.com/department-directory
+https://ar-paragould.civicplus.com/public-notices
+
+# County / local government sources
+https://www.greenecounty.arkansas.gov/
+https://www.greenecounty.arkansas.gov/government/
+https://www.greenecounty.arkansas.gov/department-directory/
+https://www.greenecounty.arkansas.gov/public-records/
+https://www.greenecounty.arkansas.gov/quorum-court/
+https://www.greenecounty.arkansas.gov/bids/
+https://www.greenecounty.arkansas.gov/treasurer/
+https://www.greenecounty.arkansas.gov/clerk/
+https://www.greenecounty.arkansas.gov/assessor/
+
+# Law-enforcement / public records
+https://www.paragouldpolice.org/
+https://www.paragouldpolice.org/police-records
+https://www.paragouldpolice.org/administration
+https://www.paragouldpolice.org/press-releases
+https://www.greenecountysheriff.com/
+https://www.greenecountysheriff.com/public-information
+https://www.greenecountysheriff.com/jail-information
+
+# Arkansas business, local corporate records, and ownership trail
+https://www.sos.arkansas.gov/business-services/
+https://www.sos.arkansas.gov/business-services/entity-search/
+https://www.sos.arkansas.gov/business-services/filing-fees/
+https://www.sos.arkansas.gov/business-services/annual-reports/
+
+# Courts and local legal process
+https://caseinfo.arcourts.gov/cconnect/
+https://caseinfo.arcourts.gov/cconnect/search/
+https://caseinfo.arcourts.gov/cconnect/publicaccess/
+
+# Arkansas ethics, campaign, and oversight
+https://www.arkansasethics.com/
+https://www.arkansasethics.com/filing-information/
+https://www.arkansasethics.com/public-reports/
+https://transparency.arkansas.gov/
+https://www.arklegaudit.gov/
+https://arkansasag.gov/
+
+# Additional local record types only if relevant
+https://www.arkansas.gov/
+https://www.arkansas.gov/agencies/
