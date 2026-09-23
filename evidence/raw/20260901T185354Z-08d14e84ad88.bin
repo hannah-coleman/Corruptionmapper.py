@@ -1,0 +1,258 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transparency.Arkansas.gov &ndash; Homepage</title>
+    <meta name="description" content="Website for Arkansas Financial Transparency Data." />
+    <link rel="shortcut icon" href="images/favicon.ico">
+    <link rel="stylesheet" href="css/app.min.css">
+    <script src="js/modernizr.min.js"></script>
+    <!-- Google Tag Manager --><script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WGPWWWK');</script><!-- End Google Tag Manager -->
+  </head>
+
+  <body>
+<!-- Google Tag Manager (noscript) --><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WGPWWWK"height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript><!-- End Google Tag Manager (noscript) -->
+<div class="page page--home">
+  <div class="container row">
+      <div class="small-12 columns top">
+        <div class="row">
+          <div class="small-12 columns">
+            <a href="http://www.arkansas.gov/" title="Visit the Arkansas.gov Website." target="_blank"><img src="images/argovlogo.png" alt="Arkansas.gov" /></a>
+            <a href="http://www.arkansas.gov/government/agencies" target="_blank">Agencies</a> | <a href="http://www.arkansas.gov/services/all-services" target="_blank">Online Services</a> | <a href="http://www.arkansas.gov/directory/index.html" target="_blank">State Directory</a>
+          </div>
+        </div>
+      </div>
+      <div class="small-12 columns header">
+        <div class="row">
+          <h1>Transparency.Arkansas.gov</h1>
+          <div class="site-nav">
+            <a href="about.html">About this Site</a> | <a href="faqs.html">FAQ's</a> | <a href="glossary.html">Glossary</a> | <a href="additional.html">Additional Info</a> | <a href="contact.html">Contact Us</a>
+          </div>
+        </div>
+      </div>
+      <div class="small-12 columns toggle">
+        <a href="#" class="button yellow">Tap for Navigation</a>
+      </div>
+      <div class="small-12 columns app-nav">
+        <ul>
+          <li><a href="http://transparency.arkansas.gov/">Home</a></li>
+          <li><a href="https://www.ark.org/dfa/transparency/expenditures.php">Expenditures</a></li>
+          <li><a href="https://www.ark.org/dfa/transparency/revenues.php">Revenues</a></li>
+          <li><a href="https://www.ark.org/dfa/transparency/employee_compensation.php">Employee Salaries</a></li>
+          <li><a href="https://www.ark.org/dfa/transparency/debts.php">Bonded Indebtedness</a></li>
+          <li><a href="https://www.ark.org/dfa/transparency/contracts.php">Contracts</a></li>
+          <li><a href="https://www.ark.org/dfa/transparency/payments.php">Payments to Cities & Counties</a></li>
+        </ul>
+      </div>
+
+  <div class="small-12 columns">
+  <div class="content">
+    <div class="row">
+      <div class="small-12 columns">
+        <div id="smartsearch" style="display:none">
+          <div class="searchresults row">
+            <div class="people small-12 medium-4 columns">
+              <h3>People</h3>
+              <ul class="person" id="people_matches">
+                <li>no matches found</li>
+              </ul>
+            </div>
+
+            <div class="agencies small-12 medium-4 columns">
+              <h3>Agencies</h3>
+              <ul class="agency" id="agency_matches">
+                <li>no matches found</li>
+              </ul>
+            </div>
+
+            <div class="vendors small-12 medium-4 columns">
+              <h3>Vendors</h3>
+              <ul class="vendor" id="vendor_matches">
+                <li>no matches found</li>
+              </ul>
+            </div>
+          </div>
+          <div class="closebtn">&#215</div>
+        </div>
+      </div>
+      <div class="small-12 medium-5 columns home">
+        <article id="search">
+          <div id="homeSearch">
+            <input type="text" id="searchTerms" placeholder="Search by Employee, Agency, or Vendor" class="search" autocomplete="off" />
+          </div>
+        </article>
+        <p>Arkansas financial transparency data can be accessed in two ways:</p>
+          <ul>
+            <li>Use the search to locate information for a specific employee, vendor or agency</li>
+            <li>Expand the links to learn more about each section</li>
+          </ul>
+
+          <h2>Historical Data</h2>
+          <p class="historic">This website will always display data from the current fiscal year which runs from <strong>July 1 through June 30</strong> and is determined by the year in which it ends. You can view data from previous fiscal years by clicking on the Expenditures, Revenues, Contracts or Payments to Cities and Counties tabs and choosing the fiscal year from the drop-down box. <strong>Historical data begins at July 1, 2012 (FY 2013)</strong>.</p>
+      </div>
+      <div class="small-12 medium-6 medium-6-offset-1 columns">
+        <ul class="accordion" data-accordion>
+          <li class="accordion-navigation">
+            <a href="#panel1a">Expenditures</a>
+            <div id="panel1a" class="content active">
+              <div class="row">
+                <div class="small-8 columns">
+                  Expenditure data identifies the agency making the payment, the vendor receiving the payment, the purpose, the amount of the expenditure, and other pertinent details. Select a link to learn more about how public funds are being spent.
+                </div>
+                <div class="small-4 columns">
+                  <a href="https://www.ark.org/dfa/transparency/expenditures.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:expenditures&tab=byagency&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZaqF37w6s81MBLroWREGlDqKkxNq_tgJnoxVMWMP4t_lR0nmcWKl4H10qZvYz-rkaGkmMIk2mHp5N" class="button radius tiny expand yellow">By Agency</a>
+                  <a href="https://www.ark.org/dfa/transparency/expenditures.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:expenditures&tab=byvendor&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZauNwylmPYOtX2fYEZ4skSofWTj7UqQwn2T906NmkvfWjnRq1gDQ4SStZUqlcj8nznTLrdLIeH-3H" class="button radius tiny expand yellow">By Vendor</a>
+                  <a href="https://www.ark.org/dfa/transparency/expenditures.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:expenditures&tab=byclassification&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZar3WA-AL_XA0wloHgweF-dTimYN0dYxaVD8l-bEg2zdu5QHJOmBJ2HiRxDv6gCVdjWw_ev4L_6cc" class="button radius tiny expand yellow">By Classification</a>
+                  <a href="https://www.ark.org/dfa/transparency/expenditures.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:expenditures&tab=byfunction&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZaq5L6yquxy1qX2h-_iuIGTHn1ZaD9srh8nukwZtHGKxmM7PVDDAiRhp0tG0wo41IqES5L3w_Z8ZJ" class="button radius tiny expand yellow">By Function</a>
+                  <a href="https://www.ark.org/dfa/transparency/expenditures.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:expenditures&tab=agencydetails&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZamFflH7jQ9Oa0-6LbVR9dQbOahALcbOsRrQJUvqnkXF5YlGs6dEgGugvKC6eAw6DkstonyyVzsRH" class="button radius tiny expand yellow">Agency Details</a>
+                  <a href="https://www.ark.org/dfa/transparency/expenditures.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:expenditures&tab=othertransactions&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZav54Gi_G69TJ2ub6AFENQNyKgrlXYJP-MR-tF5cwF5oBRw2fqtd22HeNJhEnfc6RC1MMV08dJWgp" class="button radius tiny expand yellow">Transaction Type</a>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="accordion-navigation">
+            <a href="#panel2a">Revenues</a>
+            <div id="panel2a" class="content">
+              <div class="row">
+                <div class="small-8 columns">
+                  Revenues are funds that the State is legally allowed to collect in order to finance the State's obligations. Examples of Revenues are taxes, fees, fines, or grants. Select a link to learn more about state revenues.
+                </div>
+                <div class="small-4 columns">
+                  <a href="https://www.ark.org/dfa/transparency/revenues.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:revenues&tab=bysource&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZarBEaIfho-Y_JhCMq8IQajWqf40CtXelHgbm1XG-xb05d7Q2Bi_KNE-_gXQN5FeljfvVcuaao7Uh" class="button radius tiny expand yellow">By Source</a>
+                  <a href="https://www.ark.org/dfa/transparency/revenues.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:revenues&tab=bytype&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZapf2uxzop3hiF-2xqmN70Cf_fR9Fjs4J5jrom6vSwklDRGx71N4MjxIx9t2guZmBF-3SJfb6Bn2D" class="button radius tiny expand yellow">By Type</a>
+                  <a href="https://www.ark.org/dfa/transparency/revenues.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:revenues&tab=byfunction&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZanpuoA8HUVctbqt4nQN8jWZMYjzh5Lm4stvrXVFGc3JnxfWjg078ZoozFGj5mbXHdC6F5LAinw_A" class="button radius tiny expand yellow">By Function</a>
+                  <a href="https://www.ark.org/dfa/transparency/revenues.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:revenues&tab=byagency&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZasKePm5TQM_zJzCPqyJtwuTsz5S9WQUmOE4-kKWdqwBdcUV988qiET4Sv-EcIJ9D3n4i9i1p5Oy7" class="button radius tiny expand yellow">By Agency</a>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="accordion-navigation">
+            <a href="#panel3a">Employee Salaries</a>
+            <div id="panel3a" class="content">
+              <div class="row">
+                <div class="small-8 columns">
+                  Employee salaries are comprised of payments for salaries and wages to state employees. Select a link to learn more about Employee Salaries.
+                </div>
+                <div class="small-4 columns">
+                  <a href="https://www.ark.org/dfa/transparency/employee_compensation.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:employee_compensation&tab=byagency&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZal5IUoM2N0czA9rIsdRwdI5wCRSWyn4b3HhrH7tHUQxOarZbj23xAGX--1q372646QvfvutjC2eh" class="button radius tiny expand yellow">By Agency</a>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="accordion-navigation">
+            <a href="#panel4a">Bonded Indebtedness</a>
+            <div id="panel4a" class="content">
+              <div class="row">
+                <div class="small-8 columns">
+                  Bonded Indebtedness only provides information on the bonded debt of the State of Arkansas. The Arkansas Constitution places limits on the State issuance of bonds. The entities reported in this section of the website have specific authorization by law to issue debt. Bonded Indebtedness data is updated quarterly.
+                </div>
+                <div class="small-4 columns">
+                  <a href="https://www.ark.org/dfa/transparency/debts.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&doebts&tab=bytype&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZatclQ2cYX8AfZFJ0gO7uxFiSeRlaDXSxNBWekaGTlXHsBTgKNfCtjZwXelIVfI6saAUEroivcQW9" class="button radius tiny expand yellow">By Type</a>
+                  <a href="https://www.ark.org/dfa/transparency/debts.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&doebts&tab=byagency&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZapxBpAGseu6tdgFFHLh2q4LP2lNTRsh0VqjTfYgMRMd-m8rVmEd2OyJ47WLyYYNr4KXqL94y_vcu" class="button radius tiny expand yellow">By Agency</a>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="accordion-navigation">
+            <a href="#panel5a">Contracts</a>
+            <div id="panel5a" class="content">
+              <div class="row">
+                <div class="small-8 columns">
+                  State Agencies negotiate contracts with vendors to provide services or goods at set prices. Contract information is available. Choose a link to learn more about contracts awarded in Arkansas.
+                </div>
+                <div class="small-4 columns">
+                  <a href="https://www.ark.org/dfa/transparency/contracts.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:contracts&tab=byvendor&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZatQ1lrXH5TrTwhqAUiL3MRjuxBzIMNVLoDGvpl_nK2WLg7jqn0RGV4D6HTk_2PtevGj-uKrI_Vm8" class="button radius tiny expand yellow">By Vendor</a>
+                  <a href="https://www.ark.org/dfa/transparency/contracts.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:contracts&tab=byagency&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZan0iM9AoqUGYlzL4dkwJ7iGeWLb4prb9jmWo2sdkHQeEhrca90ZgYdtcDr-eqm3hOaIsiRwlteNP" class="button radius tiny expand yellow">By Agency</a>
+                  <a href="https://www.ark.org/dfa/transparency/contracts.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&do:contracts&tab=bycategory&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZatNyPTGnlMSD7k8ZjZv1c-1xH6-CzbxBMgSGVBmn3fl_ddd16RmkcD-2dIYN1ke_zNMocVXS1BEx" class="button radius tiny expand yellow">By Category</a>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="accordion-navigation">
+            <a href="#panel6a">Payments to Cities &amp; Counties</a>
+            <div id="panel6a" class="content">
+              <div class="row">
+                <div class="small-8 columns">
+                  Cities and counties receive funding from the State to help provide services for local residents. Select a link to find more information on payments made to cities and counties.
+                </div>
+                <div class="small-4 columns">
+                  <a href="https://www.ark.org/dfa/transparency/payments.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&doayments&tab=byagency&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZaktr8tlPzrtm1VHX2HCcii4jNQzYWdmORAk8ocq2c1PZ4hTMIhTB_JjCXkT3z5tgidi4MQioI_NO" class="button radius tiny expand yellow">By Agency</a>
+                  <a href="https://www.ark.org/dfa/transparency/payments.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&doayments&tab=byvendor&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZauRkC-rPowEkainuWSEApFkZkx6L-ypIeDaKtsXU285Szi-y_DqMm4UC_lavYh6qWGmCn5PLjaR_" class="button radius tiny expand yellow">By Vendor</a>
+                  <a href="https://www.ark.org/dfa/transparency/payments.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&doayments&tab=byclassification&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZartq91NTItiB5zhTdv76A0GeeyW7nhtI6Ap8jMlQEOdUsOZ4hnbQ2sErwvEA8XHBsUriHHvBISCc" class="button radius tiny expand yellow">By Classification</a>
+                  <a href="https://www.ark.org/dfa/transparency/payments.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&doayments&tab=byfunction&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZarNE62ZXtVtRBlMeTO25v00NrgkJoatst9D5wcg5CXs3F09WIw1Jb4EgdWZeNgzcGKd04xSb7JQS" class="button radius tiny expand yellow">By Functions</a>
+                  <a href="https://www.ark.org/dfa/transparency/payments.php?ina_sec_csrf=5abc4dfde268b093fc21981a6cd8856c&doayments&tab=agencydetails&__ncforminfo=vVy7yMJE5IX723HO4VTi5tLVu4dW8w7MBtNIRFZSw8dXe1rS6SyZanAGP4jRUCN11U1M8abEWivv7lVj710hjAbPaekSlNhdgQscjlyJvY-ypoj7fbVjyKmlaUpwqWTw" class="button radius tiny expand yellow">By Agency Details</a>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="row bottom">
+    <div class="small-12 columns">
+      <h2>Additional Transparency Information from Other Sites</h2>
+    </div>
+    <div class="small-12 medium-3 columns">
+      <div class="box">
+        <h2>Candidate/Lobbyist/PAC</h2>
+        <p><a href="http://financial-disclosures.sos.arkansas.gov/#/publicreports">Candidate Contribution and Expenditure Reports</a><br />Search by candidate name, election, contributor and office</p>
+        <p><a href="http://financial-disclosures.sos.arkansas.gov/#/lobbyistReports">Lobbyist Reports</a><br />Search by lobbyist name, firm name, client name and dollar amount</p>
+        <p><a href="http://www.sos.arkansas.gov/pac_search/index.php/search/advanced/new">Political Action Committee (PAC) Reports</a><br />Search by PAC name, contributor name and address, and dollar amount</p>
+      </div>
+    </div>
+    <div class="small-12 medium-3 columns">
+      <div class="box">
+        <h2>Elected Officials/Legislature</h2>
+        <p><a href="http://financial-disclosures.sos.arkansas.gov/#/EthicsReports">General Assembly Member Disclosure Reports</a><br />Search by candidate name, election, contributor, and office</p>
+        <p><a href="http://www.arkansas.gov/government/my-officials/">Elected Officials Search</a><br /> Find your elected officials</p>
+        <p><a href="http://www.arkleg.state.ar.us/SearchCenter/Pages/historicalbil.aspx">Legislative Bill Tracking</a><br /> Read bills being considered for a vote</p>
+        <p><a href="https://www.arklegaudit.gov/our-reports/search-audits/default.aspx">Legislative Audit Reports</a><br />
+          Use the interactive search to locate audit reports</p>
+</p>
+      </div>
+    </div>
+    <div class="small-12 medium-3 columns">
+      <div class="box">
+        <h2>State Government</h2>
+        <p><a href="http://financial-disclosures.sos.arkansas.gov/#/EthicsReports">Employee Disclosure Reports</a><br />
+Search by employee or agency</p>
+        <p><a href="http://www.adhe.edu/data-publications/institution-expenditures/">Higher Ed Enrollment Data</a><br />
+        Search by term, year or institution</p>
+        <p><a href="http://financial-disclosures.sos.arkansas.gov/#/index">Financial Disclosure Search</a><br />
+Search by calendar year, filer name, or payment types</p>
+        <p><a href="http://www.arkansas.gov/government/calendar">Public Meeting Calendar</a><br />
+Locate public meetings</p>
+        <p><a href="http://www.dfa.arkansas.gov/offices/exciseTax/TaxCredits/Documents/programCost.pdf">Program Costs</a><br />
+Business Incentives and Tax credit Program Costs</p>
+      </div>
+    </div>
+    <div class="small-12 medium-3 columns">
+      <div class="box resources">
+        <h2>Resources</h2>
+        <img src="images/widget.png" alt="Widget Icon" />
+        <h3>Display Transparency Data on Your Website</h3>
+        <a href="https://www.ark.org/dfa/transparency/widget.php" target="_blank">Get the widget ></a>
+        <img src="images/alerticon.png" alt="Alert Icon" />
+        <h3><a href="/enews.html">Sign Up for Transparency News and Updates</a></h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div>
+  <div class="base row">
+    <div class="small-12 medium-6 columns">
+      <a href="about.html">About this site</a> | <a href="http://www.arkansas.gov/policies/acceptable-use" title="Internet Acceptable Use Policies" target="_blank">Internet Policies</a>
+    </div>
+    <div class="small-12 medium-6 columns">
+      <p class="right">&copy; 2016 | Arkansas Department of Finance and Administration</p>
+    </div>
+  </div>
+</div>
+    <script src="js/app.min.js"></script>
+ 
+  </body>
+</html>

@@ -1,0 +1,12 @@
+# Lawful first-pass public-source target list for the Paragould / Greene County / Arkansas review.
+# Keep this list limited to official public sources relevant to the defined local jurisdiction.
+
+https://ar-paragould.civicplus.com/
+https://www.paragouldpolice.org/
+https://www.greenecounty.arkansas.gov/
+https://www.sos.arkansas.gov/
+https://caseinfo.arcourts.gov/cconnect/
+https://www.arkansasethics.com/
+https://transparency.arkansas.gov/
+https://www.arklegaudit.gov/
+https://arkansasag.gov/

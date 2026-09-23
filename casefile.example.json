@@ -1,0 +1,152 @@
+{
+  "schema_version": "0.1.0",
+  "case_id": "case-example-001",
+  "title": "Paragould / Greene County public records review",
+  "jurisdiction": ["Paragould", "Greene County", "Arkansas"],
+  "scope": {
+    "start": "2024-01-01",
+    "end": "2026-08-27",
+    "agencies": [],
+    "record_types": []
+  },
+  "entities": [
+    {"id": "entity-001", "label": "Paragould City Clerk", "entity_type": "Government", "status": "sourced", "summary": "Local records custodian for municipal agendas, bids, and contract files.", "x": 180, "y": 130},
+    {"id": "entity-002", "label": "Meridian Civic Group", "entity_type": "Entity", "status": "sourced", "summary": "Local consulting or vendor entity associated with public procurement records.", "x": 395, "y": 95},
+    {"id": "entity-003", "label": "Greene County Finance Office", "entity_type": "Government", "status": "unverified-lead", "summary": "County financial-office lead tied to local funding and oversight records.", "x": 610, "y": 145},
+    {"id": "entity-004", "label": "Paragould Vendor Ledger", "entity_type": "Entity", "status": "sourced", "summary": "Business registration and vendor record tied to a local address and public filing activity.", "x": 255, "y": 270},
+    {"id": "entity-005", "label": "Arkansas grant funds", "entity_type": "Public money", "status": "sourced", "summary": "Public money trail connected to a local program or contract finance file.", "x": 500, "y": 255},
+    {"id": "entity-006", "label": "Paragould business address", "entity_type": "Location", "status": "unverified-lead", "summary": "Address appearing in local filings and related records; requires direct verification.", "x": 375, "y": 380},
+    {"id": "entity-007", "label": "Arkansas legal services", "entity_type": "Entity", "status": "sourced", "summary": "Outside legal services referenced in public documents or attachments.", "x": 620, "y": 350},
+    {"id": "entity-008", "label": "Local public records watch", "entity_type": "Organization", "status": "sourced", "summary": "Public-interest organization used as source context only.", "x": 115, "y": 350}
+  ],
+  "relationships": [
+    {"id": "relationship-001", "source_entity_id": "entity-001", "target_entity_id": "entity-002", "relation": "approves-contract", "evidence_status": "sourced", "source_ids": ["source-001"]},
+    {"id": "relationship-002", "source_entity_id": "entity-002", "target_entity_id": "entity-004", "relation": "related-entity", "evidence_status": "sourced", "source_ids": ["source-001"]},
+    {"id": "relationship-003", "source_entity_id": "entity-002", "target_entity_id": "entity-003", "relation": "meeting-reference", "evidence_status": "unresolved", "source_ids": ["source-001"]},
+    {"id": "relationship-004", "source_entity_id": "entity-002", "target_entity_id": "entity-005", "relation": "receives-funds", "evidence_status": "sourced", "source_ids": ["source-001"]},
+    {"id": "relationship-005", "source_entity_id": "entity-004", "target_entity_id": "entity-006", "relation": "registered-at", "evidence_status": "sourced", "source_ids": ["source-001"]},
+    {"id": "relationship-006", "source_entity_id": "entity-006", "target_entity_id": "entity-007", "relation": "location-lead", "evidence_status": "unresolved", "source_ids": ["source-001"]},
+    {"id": "relationship-007", "source_entity_id": "entity-005", "target_entity_id": "entity-007", "relation": "pays", "evidence_status": "sourced", "source_ids": ["source-001"]},
+    {"id": "relationship-008", "source_entity_id": "entity-003", "target_entity_id": "entity-008", "relation": "reported-by", "evidence_status": "sourced", "source_ids": ["source-001"]}
+  ],
+  "observations": [
+    {
+      "id": "observation-001",
+      "category": "business | medical | welfare | law-enforcement | judicial | political | government | communications | scientific | timeline | oversight",
+      "sensitivity": "public | restricted | counsel-protected",
+      "storage_zone": "public-graph | restricted-vault",
+      "lane": "emerging-circumstance",
+      "text": "Exact transcription of an observation; do not convert it into a conclusion.",
+      "source_ids": ["source-001"],
+      "event_date": null,
+      "location": null,
+      "actors": [],
+      "applicable_rule": null,
+      "supports": [],
+      "does_not_establish": ["Intent", "criminality", "medical causation"],
+      "alternative_explanations": [],
+      "confidence": "unrated",
+      "next_test": "Identify the narrowest lawful record request or corroboration step.",
+      "review_notes": []
+    }
+  ],
+  "sources": [
+    {
+      "id": "source-001",
+      "title": "Source title",
+      "sensitivity": "public | restricted | counsel-protected",
+      "storage_zone": "public-graph | restricted-vault",
+      "issuer_or_account": "Issuing body or public account",
+      "url": "https://example.gov/public-record",
+      "source_family": "government | court | business | social-public | media | scientific",
+      "access_method": "official-public-page | permitted-api | public-download | records-request",
+      "published_at": null,
+      "captured_at": "2026-08-27T00:00:00Z",
+      "sha256": null,
+      "type": "primary-public-record",
+      "access_limitations": [],
+      "chain_of_custody": []
+    }
+  ],
+  "logos": [
+    {
+      "id": "logos-001",
+      "observation_ids": ["observation-001"],
+      "rule_or_mechanism": null,
+      "inference": null,
+      "counterevidence_ids": [],
+      "status": "open",
+      "reviewer": null,
+      "reviewed_at": null,
+      "next_action": ""
+    }
+  ],
+  "technical_lenses": [
+    {
+      "discipline": "physics | biology | pathology",
+      "question": "What measurable fact needs qualified review?",
+      "proposed_mechanism": null,
+      "baseline_or_control": null,
+      "method_required": null,
+      "qualified_reviewer": null,
+      "falsifier": null,
+      "status": "not_assessed"
+    }
+  ],
+  "requests": [
+    {
+      "id": "request-001",
+      "jurisdiction": "Arkansas / local",
+      "custodian": "City of Paragould records custodian",
+      "description": "Contracts, solicitations, bids, scoring, awards, amendments, invoices, and payments for one defined contract and date range.",
+      "status": "draft",
+      "submitted_at": null,
+      "deadline": null,
+      "response_at": null,
+      "denial_reason": null,
+      "counsel_review": "needed"
+    },
+    {
+      "id": "request-002",
+      "jurisdiction": "Arkansas / local",
+      "custodian": "Greene County records custodian",
+      "description": "Meeting agendas, minutes, attachments, attendance, recordings, notices, and related procurement records for the defined event.",
+      "status": "draft",
+      "submitted_at": null,
+      "deadline": null,
+      "response_at": null,
+      "denial_reason": null,
+      "counsel_review": "needed"
+    }
+  ],
+  "discrepancies": [
+    {
+      "id": "discrepancy-001",
+      "type": "timing-gap | contradiction | omission | procedural-error | innocence-supporting",
+      "summary": "A source gap or procedural discrepancy may explain a pattern without implying wrongdoing.",
+      "source_ids": ["source-001"],
+      "observation_ids": ["observation-001"],
+      "status": "open",
+      "is_exculpatory": true,
+      "innocence_supporting": "A missing record, contradictory version, or procedural defect can explain the appearance of misconduct without establishing guilt.",
+      "next_action": "Preserve both versions and request the governing record or procedural explanation."
+    }
+  ],
+  "audit_log": [
+    {
+      "id": "audit-001",
+      "action": "case-created",
+      "actor": "",
+      "timestamp": "2026-08-27T00:00:00Z",
+      "object_id": "case-example-001",
+      "reason": "",
+      "previous_version": null
+    }
+  ],
+  "governance": {
+    "access_roles": ["owner", "researcher", "reviewer", "counsel", "expert", "export-only"],
+    "default_export_class": "working-export",
+    "retention_review_due": null,
+    "backup_restore_tested": false
+  }
+}
