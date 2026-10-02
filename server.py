@@ -170,16 +170,30 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                         (pattern, pattern, *vis_params, pattern, pattern, *vis_params, pattern, *vis_params, pattern))]
             elif route == "/api/search-text":
                 term = query.get("q", [""])[0].strip()
+                agency = query.get("agency", [""])[0].strip()
+                kind = query.get("kind", [""])[0].strip().lower()
                 payload = []
-                if term:
+                if term and self.search_database.exists():
+                    registry = json.loads(self.registry.read_text(encoding="utf-8")) if self.registry.exists() else []
+                    hosts = next((entry.get("hosts", []) for entry in registry if entry.get("id") == agency), []) if agency else []
+                    if agency and not hosts:
+                        self.send_json({"error": "Unknown agency."}, 400)
+                        return
+                    filters, params = [], ['"' + term.replace('"', '""') + '"']
+                    if hosts:
+                        filters.append("(" + " OR ".join("url LIKE ?" for _ in hosts) + ")")
+                        params += [f"%://{host}/%" for host in hosts]
+                    if kind in {"pdf", "html"}:
+                        filters.append("content_type = ?")
+                        params.append("application/pdf" if kind == "pdf" else "text/html")
+                    where = "".join(f" AND {clause}" for clause in filters)
                     search_connection = sqlite3.connect(self.search_database)
                     search_connection.row_factory = sqlite3.Row
                     try:
-                        safe_term = '"' + term.replace('"', '""') + '"'
                         payload = [dict(row) for row in search_connection.execute(
-                            "SELECT url, title, source_family, captured_at, raw_file, sha256, snippet(documents, 2, '<mark>', '</mark>', '...', 24) AS excerpt FROM documents WHERE documents MATCH ? ORDER BY rank LIMIT 25",
-                            (safe_term,))]
-                    except Exception:
+                            "SELECT url, title, content_type, captured_at, raw_file, sha256, snippet(documents, 2, '<mark>', '</mark>', '...', 24) AS excerpt "
+                            f"FROM documents WHERE documents MATCH ?{where} ORDER BY rank LIMIT 50", params)]
+                    except sqlite3.Error:
                         payload = []
                     finally:
                         search_connection.close()

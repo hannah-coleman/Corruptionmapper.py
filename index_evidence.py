@@ -19,7 +19,22 @@ class TextParser(HTMLParser):
         self.parts.append(data)
 
 
+MAX_PDF_PAGES = 300
+
+
+def extract_pdf_text(path: Path) -> str:
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(str(path))
+        pages = [(page.extract_text() or "") for page in reader.pages[:MAX_PDF_PAGES]]
+    except Exception:
+        return ""
+    return " ".join(" ".join(pages).split())
+
+
 def extract_text(path: Path, content_type: str) -> str:
+    if content_type == "application/pdf":
+        return extract_pdf_text(path)
     if content_type != "text/html":
         return ""
     parser = TextParser()
@@ -41,8 +56,8 @@ def main() -> int:
     args = parser.parse_args()
     args.database.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(args.database)
-    connection.execute("CREATE VIRTUAL TABLE IF NOT EXISTS documents USING fts5(url, title, content, source_family, captured_at, raw_file, sha256)")
-    connection.execute("DELETE FROM documents")
+    connection.execute("DROP TABLE IF EXISTS documents")
+    connection.execute("CREATE VIRTUAL TABLE documents USING fts5(url, title, content, source_family, captured_at, raw_file, sha256, content_type)")
     indexed = 0
     try:
         for manifest_path in args.manifest:
@@ -54,10 +69,10 @@ def main() -> int:
                     continue
                 raw_file = Path(item["raw_file"])
                 content = extract_text(raw_file, item.get("content_type", ""))
-                connection.execute("INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?)", (
+                connection.execute("INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (
                     item.get("url", ""), title_for(item, raw_file), content,
                     item.get("source_family", "unclassified"), item.get("captured_at", ""),
-                    str(raw_file), item.get("sha256", "")))
+                    str(raw_file), item.get("sha256", ""), item.get("content_type", "")))
                 indexed += 1
         connection.commit()
     finally:

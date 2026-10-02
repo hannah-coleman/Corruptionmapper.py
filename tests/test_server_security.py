@@ -123,3 +123,24 @@ def test_upload_roundtrip_preserves_file_and_hash(running):
     assert record["protection"] == "restricted"
     assert record["original_filename"] == "minutes.txt"
     assert Path(record["stored_file"]).read_bytes() == b"hello bytes"
+
+
+def test_text_search_filters_by_agency_and_kind(running, monkeypatch):
+    port, tmp_path = running
+    database = sqlite3.connect(tmp_path / "evidence" / "search.sqlite")
+    database.execute("CREATE VIRTUAL TABLE documents USING fts5(url, title, content, source_family, captured_at, raw_file, sha256, content_type)")
+    database.executemany("INSERT INTO documents VALUES (?, ?, ?, '', '', '', '', ?)", [
+        ("https://city.example.gov/minutes.pdf", "minutes", "paving contract approved", "application/pdf"),
+        ("https://city.example.gov/news", "news", "paving contract news", "text/html"),
+        ("https://other.example.gov/news", "other", "paving contract elsewhere", "text/html"),
+    ])
+    database.commit()
+    database.close()
+    (tmp_path / "registry.json").write_text(json.dumps([{"id": "city", "hosts": ["city.example.gov"]}]), encoding="utf-8")
+    monkeypatch.setattr(server.SignalLedgerHandler, "registry", tmp_path / "registry.json")
+    monkeypatch.setattr(server.SignalLedgerHandler, "search_database", tmp_path / "evidence" / "search.sqlite")
+    urls = lambda query: sorted(r["url"] for r in json.loads(request(port, "GET", f"/api/search-text?{query}")[1]))
+    assert len(urls("q=paving")) == 3
+    assert urls("q=paving&agency=city") == ["https://city.example.gov/minutes.pdf", "https://city.example.gov/news"]
+    assert urls("q=paving&agency=city&kind=pdf") == ["https://city.example.gov/minutes.pdf"]
+    assert request(port, "GET", "/api/search-text?q=paving&agency=nope")[0] == 400
