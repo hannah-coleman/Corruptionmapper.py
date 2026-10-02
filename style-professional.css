@@ -517,3 +517,7 @@ button.primary-button:active {
 
 /* Layout rules set display on views; the hidden attribute must always win. */
 [hidden] { display: none !important; }
+
+#facts-view .form-row .primary-button { align-self: flex-end; width: auto; padding: 10px 18px; }
+#facts-view td small { display: block; color: #667085; }
+#facts-view mark { background: #fff3a3; }

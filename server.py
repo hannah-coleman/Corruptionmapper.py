@@ -110,6 +110,15 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         if route.startswith("/api/claims/") and route.endswith("/review"):
             self.review_claim_record(route)
             return
+        if route == "/api/facts/extract":
+            self.extract_facts_from_source()
+            return
+        if route == "/api/facts":
+            self.add_manual_fact_record()
+            return
+        if route.startswith("/api/facts/") and route.endswith("/review"):
+            self.review_fact_record(route)
+            return
         self.send_error(405, "Method not allowed")
 
     def sql_visibility(self) -> tuple[str, list[str]]:
@@ -120,7 +129,64 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         return f"sensitivity IN ({marks}) AND storage_zone IN ({marks})", [*sorted(levels), *sorted(levels)]
 
     def visible_records(self, records: list[dict]) -> list[dict]:
-        return web_security.visible(records, self.visible_levels)
+        kept = web_security.visible(records, self.visible_levels)
+        self.withheld = len(records) - len(kept)
+        return kept
+
+    def read_json_object(self) -> dict:
+        try:
+            payload = json.loads((self.read_body() or b"{}").decode("utf-8"))
+        except json.JSONDecodeError as error:
+            raise ValueError("Invalid JSON body.") from error
+        if not isinstance(payload, dict):
+            raise ValueError("The request body must be a JSON object.")
+        return payload
+
+    def load_fact_source(self, payload: dict) -> tuple[list[str], dict, str]:
+        from fact_sources import load_captured_source, load_evidence_source
+        if payload.get("evidence_id"):
+            return load_evidence_source(Path("evidence/records.json"), Path("evidence/uploads"), str(payload["evidence_id"]))
+        if payload.get("url"):
+            return load_captured_source(self.search_database, Path("evidence"), str(payload["url"]))
+        raise ValueError("Provide an evidence_id or a captured page url.")
+
+    def extract_facts_from_source(self) -> None:
+        try:
+            pages, source, protection = self.load_fact_source(self.read_json_object())
+            from facts import extract_from_pages, save_proposed
+            facts = extract_from_pages(pages, source, protection)
+            summary = save_proposed(Path("evidence/facts.json"), facts)
+        except ValueError as error:
+            self.send_json({"error": str(error)}, 400)
+            return
+        from audit_log import append_entry
+        append_entry(Path("evidence/audit.jsonl"), "facts-extracted", source["ref"][:80], {"source_sha256": source["sha256"], "protection": protection, **summary})
+        self.send_json({"status": "ok", "protection": protection, **summary})
+
+    def add_manual_fact_record(self) -> None:
+        try:
+            payload = self.read_json_object()
+            _, source, protection = self.load_fact_source(payload)
+            from facts import add_manual_fact
+            fact = add_manual_fact(Path("evidence/facts.json"), payload, source, protection)
+        except ValueError as error:
+            self.send_json({"error": str(error)}, 400)
+            return
+        from audit_log import append_entry
+        append_entry(Path("evidence/audit.jsonl"), "fact-entered", fact["id"], {"kind": fact["kind"], "reviewer": fact["reviewer"], "protection": protection})
+        self.send_json({"status": "ok", "record": fact})
+
+    def review_fact_record(self, route: str) -> None:
+        try:
+            payload = self.read_json_object()
+            from facts import review_fact
+            fact = review_fact(Path("evidence/facts.json"), route.removeprefix("/api/facts/").removesuffix("/review"), payload)
+        except ValueError as error:
+            self.send_json({"error": str(error)}, 400)
+            return
+        from audit_log import append_entry
+        append_entry(Path("evidence/audit.jsonl"), "fact-reviewed", fact["id"], {"disposition": fact["status"], "reviewer": fact["reviewer"], "corrected": "original_value" in fact})
+        self.send_json({"status": "ok", "record": fact})
 
     def captured_documents(self) -> list[dict]:
         if not self.search_database.exists():
@@ -211,6 +277,12 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             elif route == "/api/evidence-live":
                 from evidence_store import load_evidence_records
                 payload = self.visible_records(load_evidence_records(Path("evidence/records.json")))
+            elif route == "/api/facts":
+                from facts import load_facts
+                status_filter = query.get("status", [""])[0]
+                kind_filter = query.get("kind", [""])[0]
+                payload = [fact for fact in self.visible_records(load_facts(Path("evidence/facts.json")))
+                           if (not status_filter or fact.get("status") == status_filter) and (not kind_filter or fact.get("kind") == kind_filter)]
             elif route == "/api/claims":
                 from claim_store import load_claims
                 payload = load_claims(Path("evidence/claims.json"))
@@ -490,6 +562,8 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if getattr(self, "withheld", 0):
+            self.send_header("X-Protected-Withheld", str(self.withheld))
         self.end_headers()
         self.wfile.write(body)
 

@@ -171,6 +171,84 @@ async function initSearch() {
   kind.addEventListener('change', schedule);
 }
 
+function passageHtml(fact) {
+  const at = fact.passage.indexOf(fact.matched_text);
+  if (!fact.matched_text || at < 0) return escapeHtml(fact.passage);
+  return `${escapeHtml(fact.passage.slice(0, at))}<mark>${escapeHtml(fact.matched_text)}</mark>${escapeHtml(fact.passage.slice(at + fact.matched_text.length))}`;
+}
+
+async function refreshFacts() {
+  const body = document.getElementById('facts-body');
+  if (!body) return;
+  const status = document.getElementById('facts-status-filter').value;
+  const response = await fetch(`/api/facts${status ? `?status=${status}` : ''}`);
+  if (!response.ok) throw new Error('Failed to load facts');
+  const facts = await response.json();
+  const withheld = Number(response.headers.get('X-Protected-Withheld') || 0);
+  const notice = document.getElementById('facts-withheld');
+  notice.hidden = !withheld;
+  notice.textContent = withheld ? `${withheld} restricted or counsel-protected fact(s) are hidden. Restart the server with --allow-protected on this machine to review them.` : '';
+  document.getElementById('facts-count').textContent = `${facts.length} shown`;
+  body.innerHTML = facts.map(fact => `<tr>
+    <td>${escapeHtml(fact.kind)}</td>
+    <td><strong>${escapeHtml(fact.value)}</strong>${fact.unit ? `<small>${escapeHtml(fact.unit)}</small>` : ''}${fact.original_value ? `<small>was ${escapeHtml(fact.original_value)}</small>` : ''}</td>
+    <td>${passageHtml(fact)}${fact.page ? `<small>Page ${fact.page}</small>` : ''}</td>
+    <td>${escapeHtml(fact.source.title || fact.source.ref)}<small>SHA-256 ${escapeHtml((fact.source.sha256 || '').slice(0, 12))} · ${escapeHtml(fact.protection)}</small></td>
+    <td><span class="table-status ${fact.status === 'confirmed' ? 'sourced' : 'review'}">${escapeHtml(fact.status)}</span>
+      ${fact.status === 'proposed' ? `<button class="quiet-button" data-fact="${escapeHtml(fact.id)}" data-disposition="confirmed">Confirm</button><button class="quiet-button" data-fact="${escapeHtml(fact.id)}" data-disposition="corrected">Correct…</button><button class="quiet-button" data-fact="${escapeHtml(fact.id)}" data-disposition="rejected">Reject…</button>` : `<small>${escapeHtml(fact.reviewer || '')}${fact.review_note ? ': ' + escapeHtml(fact.review_note) : ''}</small>`}</td></tr>`).join('') || '<tr><td colspan="5">No facts in this view.</td></tr>';
+}
+
+function populateFactEvidence() {
+  const select = document.getElementById('facts-evidence');
+  if (!select) return;
+  select.innerHTML = '<option value="">Choose a preserved file…</option>' + liveEvidenceData.filter(item => item.stored_file)
+    .map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.title || item.original_filename)}</option>`).join('');
+}
+
+function initFacts() {
+  const reviewer = document.getElementById('facts-reviewer');
+  if (!reviewer) return;
+  reviewer.value = localStorage.getItem('signalLedgerReviewer') || '';
+  reviewer.addEventListener('change', () => localStorage.setItem('signalLedgerReviewer', reviewer.value.trim()));
+  document.getElementById('facts-status-filter').addEventListener('change', () => refreshFacts().catch(error => alert(error.message)));
+  const extract = async payload => {
+    const response = await fetch('/api/facts/extract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await response.json();
+    if (!response.ok) { alert(result.error || 'Extraction failed'); return; }
+    alert(`${result.added} new fact(s) proposed${result.already_present ? `, ${result.already_present} already present` : ''}${result.truncated ? '. Limit reached; the rest were not extracted' : ''}.`);
+    document.getElementById('facts-status-filter').value = 'proposed';
+    refreshFacts().catch(error => alert(error.message));
+  };
+  document.getElementById('facts-extract-evidence').addEventListener('click', () => {
+    const id = document.getElementById('facts-evidence').value;
+    if (id) extract({ evidence_id: id }); else alert('Choose a preserved file first.');
+  });
+  document.getElementById('facts-extract-url').addEventListener('click', () => {
+    const url = document.getElementById('facts-url').value.trim();
+    if (url) extract({ url }); else alert('Enter the exact URL of a captured page.');
+  });
+  document.getElementById('facts-body').addEventListener('click', async event => {
+    const button = event.target.closest('[data-fact]');
+    if (!button) return;
+    const name = reviewer.value.trim();
+    if (!name) { alert('Enter your name as reviewer first.'); return; }
+    const payload = { reviewer: name, disposition: button.dataset.disposition };
+    if (payload.disposition === 'rejected') {
+      payload.note = prompt('Why is this fact wrong or not usable? (required)');
+      if (!payload.note) return;
+    } else if (payload.disposition === 'corrected') {
+      payload.disposition = 'confirmed';
+      payload.corrected_value = prompt('Enter the correct value (dates as YYYY-MM-DD, amounts as 1234.56, votes as 5-2):');
+      if (!payload.corrected_value) return;
+      payload.note = prompt('Note on the correction (optional):') || '';
+    }
+    const response = await fetch(`/api/facts/${encodeURIComponent(button.dataset.fact)}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!response.ok) { alert((await response.json()).error || 'Review failed'); return; }
+    refreshFacts().catch(error => alert(error.message));
+  });
+  document.querySelector('[data-view="facts"]').addEventListener('click', () => { populateFactEvidence(); refreshFacts().catch(error => alert(error.message)); });
+}
+
 function renderCoverage() {
   const total = liveEvidenceData.length;
   const cited = liveEvidenceData.filter(item => item.url && (item.captured_at || item.recorded_at)).length;
@@ -646,6 +724,7 @@ fetch('/api/case').then(response => {
     renderCoverage();
   }
 
+  initFacts();
   initSearch().catch(error => console.error('Search init failed:', error));
   refreshFoiaPlan().catch(error => console.error('FOIA plan failed:', error));
   refreshClaims().catch(error => console.error('Claims refresh failed:', error));
@@ -698,7 +777,7 @@ function initializeUi() {
         }
       });
       
-      const titles = { map: 'Connection map', evidence: 'Evidence index', claims: 'Claims ledger', audit: 'Collection audit', changes: 'Source changes', timeline: 'Chronology', auditor: 'Integrity auditor', requests: 'Records requests', protocol: 'Audit protocol', sources: 'Source catalog' };
+      const titles = { map: 'Connection map', evidence: 'Evidence index', claims: 'Claims ledger', audit: 'Collection audit', changes: 'Source changes', timeline: 'Chronology', facts: 'Facts', auditor: 'Integrity auditor', requests: 'Records requests', protocol: 'Audit protocol', sources: 'Source catalog' };
       document.querySelector('h1').textContent = titles[view] || 'Signal Ledger';
     });
   });

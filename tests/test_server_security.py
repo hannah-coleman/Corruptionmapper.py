@@ -144,3 +144,63 @@ def test_text_search_filters_by_agency_and_kind(running, monkeypatch):
     assert urls("q=paving&agency=city") == ["https://city.example.gov/minutes.pdf", "https://city.example.gov/news"]
     assert urls("q=paving&agency=city&kind=pdf") == ["https://city.example.gov/minutes.pdf"]
     assert request(port, "GET", "/api/search-text?q=paving&agency=nope")[0] == 400
+
+
+def upload(port, name, content, protection=None):
+    boundary = "XBX"
+    extra = f"--{boundary}\r\nContent-Disposition: form-data; name=\"protection\"\r\n\r\n{protection}\r\n" if protection else ""
+    body = (extra + f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{name}\"\r\nContent-Type: text/plain\r\n\r\n").encode() + content + f"\r\n--{boundary}--\r\n".encode()
+    status, data = request(port, "POST", "/api/evidence-upload", body=body, headers={"X-Signal-Ledger": "1", "Content-Type": f"multipart/form-data; boundary={boundary}"})
+    assert status == 200, data
+    return json.loads(data)["record"]
+
+
+def post_json(port, path, payload):
+    status, data = request(port, "POST", path, body=json.dumps(payload), headers=TRUSTED)
+    return status, json.loads(data)
+
+
+def test_fact_extraction_review_flow_and_default_protection(running, monkeypatch):
+    port, tmp_path = running
+    record = upload(port, "notes.txt", b"The county approved $5,000 on May 5, 2025 by a vote of 4-1.")
+    status, summary = post_json(port, "/api/facts/extract", {"evidence_id": record["id"]})
+    assert status == 200 and summary["added"] == 3 and summary["protection"] == "restricted"
+    assert post_json(port, "/api/facts/extract", {"evidence_id": record["id"]})[1]["added"] == 0
+
+    connection = HTTPConnection("127.0.0.1", port)
+    connection.request("GET", "/api/facts")
+    response = connection.getresponse()
+    assert json.loads(response.read()) == [] and response.getheader("X-Protected-Withheld") == "3"
+    connection.close()
+
+    monkeypatch.setattr(server.SignalLedgerHandler, "visible_levels", web_security.ALL_LEVELS)
+    facts = json.loads(request(port, "GET", "/api/facts?kind=amount")[1])
+    assert len(facts) == 1 and "$5,000" in facts[0]["passage"] and facts[0]["status"] == "proposed"
+
+    fact_id = facts[0]["id"]
+    assert post_json(port, f"/api/facts/{fact_id}/review", {"disposition": "confirmed"})[0] == 400
+    status, reviewed = post_json(port, f"/api/facts/{fact_id}/review", {"disposition": "confirmed", "reviewer": "H"})
+    assert status == 200 and reviewed["record"]["status"] == "confirmed"
+    assert len(json.loads(request(port, "GET", "/api/facts?status=confirmed")[1])) == 1
+
+    entries = [json.loads(line)["action"] for line in (tmp_path / "evidence" / "audit.jsonl").read_text().splitlines()]
+    assert {"facts-extracted", "fact-reviewed"} <= set(entries)
+
+
+def test_extraction_refuses_tampered_files_and_unknown_sources(running):
+    port, _ = running
+    record = upload(port, "notes.txt", b"Paid $1 on May 5, 2025.")
+    Path(record["stored_file"]).write_bytes(b"tampered")
+    status, payload = post_json(port, "/api/facts/extract", {"evidence_id": record["id"]})
+    assert status == 400 and "Integrity" in payload["error"]
+    assert post_json(port, "/api/facts/extract", {"url": "https://nowhere.example/x"})[0] == 400
+    assert post_json(port, "/api/facts/extract", {})[0] == 400
+
+
+def test_manual_fact_requires_source_and_name(running, monkeypatch):
+    port, _ = running
+    record = upload(port, "w.txt", b"Warrant issued 2026-02-27 by clerk.", protection="counsel")
+    entry = {"evidence_id": record["id"], "kind": "date", "value": "2026-02-27", "passage": "Warrant issued 2026-02-27 by clerk."}
+    assert post_json(port, "/api/facts", entry)[0] == 400
+    status, saved = post_json(port, "/api/facts", {**entry, "reviewer": "H"})
+    assert status == 200 and saved["record"]["protection"] == "counsel" and saved["record"]["status"] == "confirmed"

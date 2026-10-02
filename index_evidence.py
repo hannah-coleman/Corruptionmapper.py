@@ -22,14 +22,23 @@ class TextParser(HTMLParser):
 MAX_PDF_PAGES = 300
 
 
-def extract_pdf_text(path: Path) -> str:
+def extract_pdf_pages(path: Path) -> list[str]:
     try:
         from pypdf import PdfReader
         reader = PdfReader(str(path))
-        pages = [(page.extract_text() or "") for page in reader.pages[:MAX_PDF_PAGES]]
+        return [" ".join((page.extract_text() or "").split()) for page in reader.pages[:MAX_PDF_PAGES]]
     except Exception:
-        return ""
-    return " ".join(" ".join(pages).split())
+        return []
+
+
+def extract_pdf_text(path: Path) -> str:
+    return " ".join(extract_pdf_pages(path)).strip()
+
+
+def extract_html_text(path: Path) -> str:
+    parser = TextParser()
+    parser.feed(path.read_bytes().decode("utf-8", errors="replace"))
+    return " ".join(" ".join(parser.parts).split())
 
 
 def extract_text(path: Path, content_type: str) -> str:
@@ -37,9 +46,7 @@ def extract_text(path: Path, content_type: str) -> str:
         return extract_pdf_text(path)
     if content_type != "text/html":
         return ""
-    parser = TextParser()
-    parser.feed(path.read_bytes().decode("utf-8", errors="replace"))
-    return " ".join(" ".join(parser.parts).split())
+    return extract_html_text(path)
 
 
 def title_for(item: dict, raw_file: Path) -> str:

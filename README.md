@@ -11,6 +11,7 @@ Corruption Mapper is a modular Python and JavaScript application engineered for 
 ## Core Components
 * **Ingestion & Collectors:** Automated pipelines designed to gather and catalog public records and intelligence targets.
 * **Audit Engines:** Validation workflows executing compliance checks and anomaly detection.
+* **Structured Facts:** Dates, amounts, and vote tallies are extracted from preserved documents by deterministic rules, pinned to their exact passage and source hash, and confirmed or rejected by a named reviewer. Only confirmed facts feed the comparison and hypothesis engines. Your own uploads are restricted by default; run `python3 server.py --allow-protected` locally to review them.
 * **Governance & Architecture:** Comprehensive structural frameworks (`APP_GOVERNANCE.md`, `CASEFILE_DESIGN.md`, etc.) defining data hygiene and boundary enforcement.
 
 ## Tech Stack
