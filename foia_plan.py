@@ -16,6 +16,12 @@ FEDERAL_FOIA = "Federal Freedom of Information Act (5 U.S.C. § 552)"
 COURT_RULE = "Court records access rules (Arkansas Supreme Court Administrative Order No. 19), not FOIA"
 LAW_NOTE = "Arkansas FOIA gives its access right to Arkansas citizens. Verify current rules, fees, and response deadlines with counsel."
 
+# Pages that only hold navigation, accounts, or generic listings say nothing about specific records.
+NON_SUBSTANTIVE_URL = re.compile(r"/(myaccount|login|search|profilecreate|calendar)", re.IGNORECASE)
+# A keyword on most of a site's pages is menu/footer text, not a signal (applies once there are enough pages to judge).
+BOILERPLATE_RATIO = 0.5
+MIN_PAGES_FOR_RATIO = 5
+
 PURPOSE = "a public-interest review of how public funds, decisions, and procedures are documented"
 
 BASELINES: dict[str, list[tuple[str, str]]] = {
@@ -93,8 +99,11 @@ def build_plan(registry: list[dict], documents: list[dict], requests: list[dict]
         seen: set[str] = set()
 
         for keyword, config in planner.KEYWORD_MAP.items():
-            hits = [doc for doc in docs if keyword in str(doc.get("content", "")).lower()]
+            substantive = [doc for doc in docs if not NON_SUBSTANTIVE_URL.search(str(doc.get("url", "")))]
+            hits = [doc for doc in substantive if keyword in str(doc.get("content", "")).lower()]
             if not hits or config["document_type"] in seen:
+                continue
+            if len(substantive) >= MIN_PAGES_FOR_RATIO and len(hits) / len(substantive) > BOILERPLATE_RATIO:
                 continue
             seen.add(config["document_type"])
             suggestions.append({

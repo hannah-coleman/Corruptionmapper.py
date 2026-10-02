@@ -40,3 +40,14 @@ def test_existing_requests_are_flagged():
     flagged = {s["document_type"]: s["already_requested"] for s in city["suggestions"]}
     assert flagged["payment and vendor registers"] is True
     assert flagged["meeting agendas, minutes, attachments, and recordings"] is False
+
+
+def test_boilerplate_and_non_substantive_pages_are_not_signals():
+    nav = [{"url": f"https://city.example.gov/page{i}", "title": "p", "content": "Home | Court | Contact"} for i in range(6)]
+    nav.append({"url": "https://city.example.gov/MyAccount/Login", "title": "login", "content": "contract fund payment meeting permit"})
+    city = next(item for item in build_plan(REGISTRY, nav, []) if item["agency_id"] == "city")
+    assert not [s for s in city["suggestions"] if s["basis"] == "evidence-indicated"]
+    mixed = nav + [{"url": "https://city.example.gov/bids/7", "title": "Bid 7", "content": "Bid award and payment schedule"}]
+    city = next(item for item in build_plan(REGISTRY, mixed, []) if item["agency_id"] == "city")
+    indicated = [s for s in city["suggestions"] if s["basis"] == "evidence-indicated"]
+    assert [s["document_type"] for s in indicated] == ["payment and procurement records"]

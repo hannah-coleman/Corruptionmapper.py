@@ -13,10 +13,11 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request
 from urllib.robotparser import RobotFileParser
 
-USER_AGENT = "SignalLedgerResearch/0.1 (+lawful-public-records; contact-case-counsel)"
+from collector import USER_AGENT, fetch_robots, open_public
+
 
 
 class LinkParser(HTMLParser):
@@ -31,23 +32,18 @@ class LinkParser(HTMLParser):
                 self.links.append(href)
 
 
-def allowed_by_robots(url: str, cache: dict[str, RobotFileParser]) -> bool:
+def robots_for(url: str, cache: dict[str, RobotFileParser | None]) -> RobotFileParser | None:
     parsed = urlparse(url)
     origin = f"{parsed.scheme}://{parsed.netloc}"
     if origin not in cache:
-        parser = RobotFileParser(f"{origin}/robots.txt")
-        try:
-            parser.read()
-        except (HTTPError, URLError, TimeoutError, OSError):
-            return False
-        cache[origin] = parser
-    return cache[origin].can_fetch(USER_AGENT, url)
+        cache[origin] = fetch_robots(url)
+    return cache[origin]
 
 
 def discover(seeds: list[str], output: Path, max_pages: int, max_depth: int, delay: float, max_bytes: int) -> list[dict]:
     queue = deque((url, 0) for url in seeds)
     seen: set[str] = set()
-    robots: dict[str, RobotFileParser] = {}
+    robots: dict[str, RobotFileParser | None] = {}
     results: list[dict] = []
     output.mkdir(parents=True, exist_ok=True)
     approved_hosts = {urlparse(seed).netloc for seed in seeds}
@@ -61,13 +57,14 @@ def discover(seeds: list[str], output: Path, max_pages: int, max_depth: int, del
             continue
         seen.add(normalized)
         result: dict[str, object] = {"url": normalized, "depth": depth, "captured_at": datetime.now(timezone.utc).isoformat(), "status": "not-collected"}
-        if not allowed_by_robots(normalized, robots):
+        parser_for_host = robots_for(normalized, robots)
+        if parser_for_host is None or not parser_for_host.can_fetch(USER_AGENT, normalized):
             result["reason"] = "robots.txt unavailable or disallows this user agent"
             results.append(result)
             continue
         try:
             request = Request(normalized, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/pdf,*/*"})
-            with urlopen(request, timeout=20) as response:
+            with open_public(request) as response:
                 body = response.read(max_bytes + 1)
                 content_type = response.headers.get_content_type()
                 if len(body) > max_bytes:
@@ -88,7 +85,7 @@ def discover(seeds: list[str], output: Path, max_pages: int, max_depth: int, del
         except (HTTPError, URLError, TimeoutError, OSError) as error:
             result["reason"] = f"fetch failed: {error}"
         results.append(result)
-        time.sleep(max(0, delay))
+        time.sleep(max(0, delay, float(parser_for_host.crawl_delay(USER_AGENT) or 0) if parser_for_host else 0))
     return results
 
 

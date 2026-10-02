@@ -28,23 +28,35 @@ def read_urls(path: Path) -> list[str]:
             if line.strip() and not line.lstrip().startswith("#")]
 
 
-def robots_allows(url: str, allow_private_hosts: bool = False) -> bool:
+def fetch_robots(url: str, allow_private_hosts: bool = False) -> RobotFileParser | None:
+    """Return the host's parsed robots.txt, or None when it cannot be determined (treated as disallowed)."""
     parsed = urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     parser = RobotFileParser(robots_url)
-    request = Request(robots_url, headers={"User-Agent": USER_AGENT})
+    if not allow_private_hosts and not is_public_address(parsed.hostname or ""):
+        return None
     try:
-        with build_opener(_ScopedRedirectHandler(allow_private_hosts)).open(request, timeout=20) as response:
+        with open_public(Request(robots_url, headers={"User-Agent": USER_AGENT}), allow_private_hosts=allow_private_hosts) as response:
             parser.parse(response.read().decode("utf-8", "replace").splitlines())
     except HTTPError as error:
         if error.code in (401, 403):
-            return False
-        if 400 <= error.code < 500:
-            return True
-        return False
+            parser.parse(["User-agent: *", "Disallow: /"])
+        elif 400 <= error.code < 500:
+            parser.parse([])
+        else:
+            return None
     except (URLError, TimeoutError, OSError):
-        return False
-    return parser.can_fetch(USER_AGENT, url)
+        return None
+    return parser
+
+
+def robots_allows(url: str, allow_private_hosts: bool = False) -> bool:
+    parser = fetch_robots(url, allow_private_hosts)
+    return parser is not None and parser.can_fetch(USER_AGENT, url)
+
+
+def open_public(request: Request, timeout: int = 20, allow_private_hosts: bool = False):
+    return build_opener(_ScopedRedirectHandler(allow_private_hosts)).open(request, timeout=timeout)
 
 
 class _ScopedRedirectHandler(HTTPRedirectHandler):
@@ -84,7 +96,7 @@ def collect(url: str, output_dir: Path, max_bytes: int, allow_private_hosts: boo
 
     request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/pdf,*/*"})
     try:
-        with build_opener(_ScopedRedirectHandler(allow_private_hosts)).open(request, timeout=20) as response:
+        with open_public(request, allow_private_hosts=allow_private_hosts) as response:
             body = response.read(max_bytes + 1)
             if len(body) > max_bytes:
                 result["reason"] = f"Response exceeded {max_bytes} byte limit."

@@ -45,3 +45,34 @@ def test_collect_refuses_loopback_by_default(tmp_path):
     results = collect_urls(["http://127.0.0.1:9/page"], tmp_path / "raw", max_bytes=50_000)
     assert results[0]["status"] == "not-collected"
     assert "publicly routable" in results[0]["reason"]
+
+
+class _RobotsHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = b"User-agent: *\nDisallow: /private\nCrawl-delay: 7\n" if self.path == "/robots.txt" else b"ok"
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format, *args):
+        return
+
+
+def test_fetch_robots_uses_rules_and_crawl_delay():
+    from collector import USER_AGENT, fetch_robots
+
+    server = HTTPServer(("127.0.0.1", 0), _RobotsHandler)
+    host, port = server.server_address
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        parser = fetch_robots(f"http://{host}:{port}/page", allow_private_hosts=True)
+        assert parser.can_fetch(USER_AGENT, f"http://{host}:{port}/page")
+        assert not parser.can_fetch(USER_AGENT, f"http://{host}:{port}/private/x")
+        assert parser.crawl_delay(USER_AGENT) == 7
+        assert fetch_robots(f"http://{host}:{port}/page") is None  # loopback refused without opt-in
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
