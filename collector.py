@@ -16,7 +16,9 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+from web_security import is_public_address
 
 USER_AGENT = "SignalLedgerResearch/0.1 (+lawful-public-records; contact case-counsel)"
 
@@ -26,18 +28,41 @@ def read_urls(path: Path) -> list[str]:
             if line.strip() and not line.lstrip().startswith("#")]
 
 
-def robots_allows(url: str) -> bool:
+def robots_allows(url: str, allow_private_hosts: bool = False) -> bool:
     parsed = urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     parser = RobotFileParser(robots_url)
+    request = Request(robots_url, headers={"User-Agent": USER_AGENT})
     try:
-        parser.read()
-    except (HTTPError, URLError, TimeoutError, OSError):
+        with build_opener(_ScopedRedirectHandler(allow_private_hosts)).open(request, timeout=20) as response:
+            parser.parse(response.read().decode("utf-8", "replace").splitlines())
+    except HTTPError as error:
+        if error.code in (401, 403):
+            return False
+        if 400 <= error.code < 500:
+            return True
+        return False
+    except (URLError, TimeoutError, OSError):
         return False
     return parser.can_fetch(USER_AGENT, url)
 
 
-def collect(url: str, output_dir: Path, max_bytes: int) -> dict[str, object]:
+class _ScopedRedirectHandler(HTTPRedirectHandler):
+    """Follow redirects only to public HTTP(S) hosts, never to internal addresses."""
+
+    def __init__(self, allow_private_hosts: bool):
+        self.allow_private_hosts = allow_private_hosts
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urlparse(newurl)
+        if target.scheme not in {"http", "https"}:
+            raise HTTPError(newurl, code, "Redirect to a non-HTTP(S) URL blocked.", headers, fp)
+        if not self.allow_private_hosts and not is_public_address(target.hostname or ""):
+            raise HTTPError(newurl, code, "Redirect to a non-public host blocked.", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def collect(url: str, output_dir: Path, max_bytes: int, allow_private_hosts: bool = False) -> dict[str, object]:
     captured = datetime.now(timezone.utc)
     parsed = urlparse(url)
     result: dict[str, object] = {
@@ -50,13 +75,16 @@ def collect(url: str, output_dir: Path, max_bytes: int) -> dict[str, object]:
     if parsed.scheme not in {"http", "https"}:
         result["reason"] = "Only HTTP(S) URLs are accepted."
         return result
-    if not robots_allows(url):
+    if not allow_private_hosts and not is_public_address(parsed.hostname or ""):
+        result["reason"] = "Host is not a publicly routable address."
+        return result
+    if not robots_allows(url, allow_private_hosts):
         result["reason"] = "robots.txt unavailable or disallows this user agent."
         return result
 
     request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/pdf,*/*"})
     try:
-        with urlopen(request, timeout=20) as response:
+        with build_opener(_ScopedRedirectHandler(allow_private_hosts)).open(request, timeout=20) as response:
             body = response.read(max_bytes + 1)
             if len(body) > max_bytes:
                 result["reason"] = f"Response exceeded {max_bytes} byte limit."
@@ -78,13 +106,13 @@ def collect(url: str, output_dir: Path, max_bytes: int) -> dict[str, object]:
     return result
 
 
-def collect_urls(urls: list[str], output_dir: Path, max_bytes: int = 10_000_000, delay: float = 0.0) -> list[dict[str, object]]:
+def collect_urls(urls: list[str], output_dir: Path, max_bytes: int = 10_000_000, delay: float = 0.0, allow_private_hosts: bool = False) -> list[dict[str, object]]:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = output_dir.parent / "manifest.jsonl"
     results: list[dict[str, object]] = []
     with manifest_path.open("a", encoding="utf-8") as manifest:
         for index, url in enumerate(urls):
-            result = collect(url, output_dir, max_bytes)
+            result = collect(url, output_dir, max_bytes, allow_private_hosts)
             results.append(result)
             manifest.write(json.dumps(result, sort_keys=True) + "\n")
             if index < len(urls) - 1 and delay > 0:

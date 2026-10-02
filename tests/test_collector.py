@@ -26,7 +26,7 @@ def test_collect_urls_records_manifest_and_results(tmp_path):
     thread.start()
 
     try:
-        results = collect_urls([f"http://{host}:{port}/page"], tmp_path / "raw", max_bytes=50_000)
+        results = collect_urls([f"http://{host}:{port}/page"], tmp_path / "raw", max_bytes=50_000, allow_private_hosts=True)
         manifest_path = tmp_path / "raw" / "../manifest.jsonl"
         assert len(results) == 1
         assert results[0]["status"] == "collected"
@@ -39,3 +39,9 @@ def test_collect_urls_records_manifest_and_results(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_collect_refuses_loopback_by_default(tmp_path):
+    results = collect_urls(["http://127.0.0.1:9/page"], tmp_path / "raw", max_bytes=50_000)
+    assert results[0]["status"] == "not-collected"
+    assert "publicly routable" in results[0]["reason"]

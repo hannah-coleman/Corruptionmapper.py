@@ -3,24 +3,34 @@
 from __future__ import annotations
 
 import argparse
-import cgi
 import json
 import sqlite3
 from datetime import datetime, timezone
+from email.parser import BytesParser
+from email.policy import HTTP as HTTP_POLICY
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+import web_security
 
 
 class SignalLedgerHandler(SimpleHTTPRequestHandler):
     database: Path
     search_database: Path = Path("evidence/search.sqlite")
     registry: Path = Path("source_registry.json")
+    port: int = 8000
+    targets: Path = Path("targets.txt")
+    # Protection levels this server may expose; evidence labeled otherwise (or unlabeled) is withheld.
+    visible_levels = web_security.PUBLIC_LEVELS
     public_files = {"/", "/index.html", "/app.js", "/app-professional.js", "/style.css", "/style-professional.css"}
 
     def do_GET(self) -> None:
         route = urlparse(self.path).path
-        if route.endswith(('.js', '.css')):
+        if not web_security.host_allowed(self.headers.get("Host"), self.port):
+            self.send_error(403, "Unexpected Host header")
+            return
+        if route in self.public_files and route.endswith(('.js', '.css')):
             self.serve_static_file(route)
             return
         if route.startswith("/api/"):
@@ -48,8 +58,28 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         except Exception:
             self.send_error(500, "Server error")
 
+    def request_is_trusted(self) -> bool:
+        host = self.headers.get("Host")
+        return (
+            web_security.host_allowed(host, self.port)
+            and web_security.origin_allowed(self.headers.get("Origin"), host)
+            and self.headers.get(web_security.CSRF_HEADER) == "1"
+        )
+
+    def read_body(self, limit: int = web_security.MAX_JSON_BODY) -> bytes:
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as error:
+            raise ValueError("Invalid Content-Length.") from error
+        if length < 0 or length > limit:
+            raise ValueError(f"Request body exceeds the {limit} byte limit.")
+        return self.rfile.read(length) if length else b""
+
     def do_POST(self) -> None:
         route = urlparse(self.path).path
+        if not self.request_is_trusted():
+            self.send_json({"error": "Cross-site or untrusted request rejected."}, 403)
+            return
         if route == "/api/collect":
             self.collect_from_web()
             return
@@ -82,6 +112,16 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             return
         self.send_error(405, "Method not allowed")
 
+    def sql_visibility(self) -> tuple[str, list[str]]:
+        levels = self.visible_levels
+        if levels is None:
+            return "1=1", []
+        marks = ",".join("?" * len(levels))
+        return f"sensitivity IN ({marks}) AND storage_zone IN ({marks})", [*sorted(levels), *sorted(levels)]
+
+    def visible_records(self, records: list[dict]) -> list[dict]:
+        return web_security.visible(records, self.visible_levels)
+
     def send_api(self, route: str) -> None:
         if not self.database.exists():
             self.send_json({"error": "Casefile database not found. Initialize it first."}, 404)
@@ -90,6 +130,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         connection.row_factory = sqlite3.Row
         try:
             query = parse_qs(urlparse(self.path).query)
+            vis_sql, vis_params = self.sql_visibility()
             if route == "/api/health":
                 payload = {"status": "ok", "database": str(self.database)}
             elif route == "/api/source-catalog":
@@ -101,11 +142,11 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 else:
                     pattern = f"%{term}%"
                     payload = [dict(row) for row in connection.execute(
-                        "SELECT id, label AS title, 'entity' AS result_type, summary AS detail, entity_type AS category, status AS confidence FROM entities WHERE label LIKE ? OR summary LIKE ? "
-                        "UNION ALL SELECT id, title, 'source', issuer_or_account, source_family, type FROM sources WHERE title LIKE ? OR issuer_or_account LIKE ? "
-                        "UNION ALL SELECT id, id, 'observation', text, category, confidence FROM observations WHERE text LIKE ? "
+                        f"SELECT id, label AS title, 'entity' AS result_type, summary AS detail, entity_type AS category, status AS confidence FROM entities WHERE (label LIKE ? OR summary LIKE ?) AND {vis_sql} "
+                        f"UNION ALL SELECT id, title, 'source', issuer_or_account, source_family, type FROM sources WHERE (title LIKE ? OR issuer_or_account LIKE ?) AND {vis_sql} "
+                        f"UNION ALL SELECT id, id, 'observation', text, category, confidence FROM observations WHERE text LIKE ? AND {vis_sql} "
                         "UNION ALL SELECT id, message, 'discrepancy', message, kind, severity FROM discrepancies WHERE message LIKE ? ORDER BY result_type, title",
-                        (pattern, pattern, pattern, pattern, pattern, pattern))]
+                        (pattern, pattern, *vis_params, pattern, pattern, *vis_params, pattern, *vis_params, pattern))]
             elif route == "/api/search-text":
                 term = query.get("q", [""])[0].strip()
                 payload = []
@@ -134,7 +175,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 )]
             elif route == "/api/evidence-live":
                 from evidence_store import load_evidence_records
-                payload = load_evidence_records(Path("evidence/records.json"))
+                payload = self.visible_records(load_evidence_records(Path("evidence/records.json")))
             elif route == "/api/claims":
                 from claim_store import load_claims
                 payload = load_claims(Path("evidence/claims.json"))
@@ -147,7 +188,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 from evidence_store import load_evidence_records
                 payload = build_counsel_packet(
                     load_claims(Path("evidence/claims.json")),
-                    load_evidence_records(Path("evidence/records.json")),
+                    self.visible_records(load_evidence_records(Path("evidence/records.json"))),
                 )
                 from audit_log import append_entry
                 append_entry(Path("evidence/audit.jsonl"), "counsel-packet-generated", details={"findings": len(payload["findings"]), "open_questions": len(payload["open_questions"]), "sources": len(payload["source_index"])})
@@ -158,7 +199,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 from packet_render import render_packet
                 packet = build_counsel_packet(
                     load_claims(Path("evidence/claims.json")),
-                    load_evidence_records(Path("evidence/records.json")),
+                    self.visible_records(load_evidence_records(Path("evidence/records.json"))),
                 )
                 from audit_log import append_entry
                 append_entry(Path("evidence/audit.jsonl"), "printable-packet-generated", details={"findings": len(packet["findings"]), "open_questions": len(packet["open_questions"]), "sources": len(packet["source_index"])})
@@ -183,7 +224,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 from evidence_store import load_evidence_records
                 from timeline import build_timeline
                 payload = build_timeline(
-                    load_evidence_records(Path("evidence/records.json")),
+                    self.visible_records(load_evidence_records(Path("evidence/records.json"))),
                     load_claims(Path("evidence/claims.json")),
                     load_manifest(Path("evidence/manifest.jsonl")),
                 )
@@ -206,20 +247,21 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 payload = deadline_status(list_requests(Path("evidence/requests.json")), datetime.now(timezone.utc).date().isoformat())
             elif route == "/api/sources":
                 payload = [dict(row) for row in connection.execute(
-                    "SELECT id, title, issuer_or_account, url, source_family, access_method, sensitivity, storage_zone, published_at, captured_at, type FROM sources ORDER BY captured_at DESC, id"
-                )]
+                    f"SELECT id, title, issuer_or_account, url, source_family, access_method, sensitivity, storage_zone, published_at, captured_at, type FROM sources WHERE {vis_sql} ORDER BY captured_at DESC, id",
+                    vis_params)]
             elif route == "/api/observations":
                 payload = [dict(row) for row in connection.execute(
-                    "SELECT id, category, sensitivity, storage_zone, lane, text, event_date, location, confidence, next_test FROM observations ORDER BY event_date, id"
-                )]
+                    f"SELECT id, category, sensitivity, storage_zone, lane, text, event_date, location, confidence, next_test FROM observations WHERE {vis_sql} ORDER BY event_date, id",
+                    vis_params)]
             elif route == "/api/entities":
                 payload = [dict(row) for row in connection.execute(
-                    "SELECT id, label, entity_type, sensitivity, storage_zone, status, summary, x, y FROM entities ORDER BY label"
-                )]
+                    f"SELECT id, label, entity_type, sensitivity, storage_zone, status, summary, x, y FROM entities WHERE {vis_sql} ORDER BY label",
+                    vis_params)]
             elif route == "/api/relationships":
                 payload = [dict(row) for row in connection.execute(
-                    "SELECT id, source_entity_id, target_entity_id, relation, evidence_status, source_ids_json FROM relationships ORDER BY id"
-                )]
+                    f"SELECT id, source_entity_id, target_entity_id, relation, evidence_status, source_ids_json FROM relationships "
+                    f"WHERE source_entity_id IN (SELECT id FROM entities WHERE {vis_sql}) AND target_entity_id IN (SELECT id FROM entities WHERE {vis_sql}) ORDER BY id",
+                    vis_params + vis_params)]
             else:
                 payload = {"error": "Unknown API route"}
                 self.send_json(payload, 404)
@@ -230,8 +272,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
 
     def collect_from_web(self) -> None:
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(content_length) if content_length else b"{}"
+            body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
         except (ValueError, json.JSONDecodeError):
             payload = {}
@@ -240,6 +281,11 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             self.send_json({"error": "No URLs provided."}, 400)
             return
         from collector import collect_urls
+        approved = web_security.approved_hosts(self.targets, self.registry)
+        out_of_scope = [url for url in urls if not web_security.url_in_scope(url, approved)]
+        if out_of_scope:
+            self.send_json({"error": "URLs must belong to hosts in the approved target list or source registry.", "rejected": [str(url) for url in out_of_scope][:10]}, 400)
+            return
         output_dir = Path("evidence/raw")
         results = collect_urls(urls, output_dir, max_bytes=10_000_000, delay=0.0)
         from audit_log import append_entry
@@ -248,7 +294,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
 
     def collect_approved_sources(self) -> None:
         from collector import collect_urls, read_urls
-        targets_path = Path("targets.txt")
+        targets_path = self.targets
         if not targets_path.exists():
             self.send_json({"error": "Approved target list not found."}, 404)
             return
@@ -260,8 +306,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
 
     def save_evidence_record(self) -> None:
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(content_length) if content_length else b"{}"
+            body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
         except (ValueError, json.JSONDecodeError):
             self.send_json({"error": "Invalid JSON body."}, 400)
@@ -281,20 +326,19 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             self.send_json({"error": "Expected a file upload."}, 400)
             return
         try:
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": content_type},
-            )
-            uploaded = form["file"] if "file" in form else None
-            if uploaded is None or not uploaded.filename:
+            body = self.read_body(web_security.MAX_UPLOAD_BODY)
+            message = BytesParser(policy=HTTP_POLICY).parsebytes(b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + body)
+            parts = {part.get_param("name", header="content-disposition"): part for part in message.iter_parts()}
+            uploaded = parts.get("file")
+            filename = uploaded.get_filename() if uploaded is not None else None
+            if not filename:
                 self.send_json({"error": "Select a file to preserve."}, 400)
                 return
-            content = uploaded.file.read(25_000_001)
-            metadata = {key: form.getfirst(key, "") for key in ("title", "summary", "kind", "protection")}
+            content = uploaded.get_payload(decode=True) or b""
+            metadata = {key: (parts[key].get_content() if key in parts else "") for key in ("title", "summary", "kind", "protection")}
             from evidence_store import save_uploaded_evidence
             record = save_uploaded_evidence(
-                Path("evidence/records.json"), Path("evidence/uploads"), uploaded.filename, content, metadata
+                Path("evidence/records.json"), Path("evidence/uploads"), filename, content, metadata
             )
         except ValueError as error:
             self.send_json({"error": str(error)}, 400)
@@ -305,8 +349,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
 
     def save_claim_record(self) -> None:
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(content_length) if content_length else b"{}"
+            body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
         except (ValueError, json.JSONDecodeError):
             self.send_json({"error": "Invalid JSON body."}, 400)
@@ -344,8 +387,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
 
     def save_request_record(self) -> None:
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(content_length) if content_length else b"{}"
+            body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
         except (ValueError, json.JSONDecodeError):
             self.send_json({"error": "Invalid request payload."}, 400)
@@ -362,8 +404,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
 
     def link_request_response_evidence(self, route: str) -> None:
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(content_length) if content_length else b"{}"
+            body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
             request_id = route.removeprefix("/api/requests/").removesuffix("/response-evidence")
             evidence_id = str(payload.get("evidence_id", "")).strip()
@@ -386,8 +427,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
 
     def review_claim_record(self, route: str) -> None:
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            body = self.rfile.read(content_length) if content_length else b"{}"
+            body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
             claim_id = route.removeprefix("/api/claims/").removesuffix("/review")
         except (ValueError, json.JSONDecodeError):
@@ -435,7 +475,13 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--registry", type=Path, default=Path("source_registry.json"))
     parser.add_argument("--search-database", type=Path, default=Path("evidence/search.sqlite"))
+    parser.add_argument("--targets", type=Path, default=Path("targets.txt"))
+    parser.add_argument("--allow-protected", action="store_true", help="Expose restricted and counsel-protected material (operator decision; no per-user access control yet).")
     args = parser.parse_args()
+    SignalLedgerHandler.port = args.port
+    SignalLedgerHandler.targets = args.targets
+    if args.allow_protected:
+        SignalLedgerHandler.visible_levels = web_security.ALL_LEVELS
     SignalLedgerHandler.database = args.database
     SignalLedgerHandler.registry = args.registry
     SignalLedgerHandler.search_database = args.search_database

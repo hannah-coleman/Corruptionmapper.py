@@ -1,6 +1,16 @@
 // Signal Ledger: Professional Evidence Management System
 // Sophisticated relationship mapping with exculpatory evidence tracking
 
+// The server rejects state-changing requests without this header, which cross-site pages cannot send.
+const nativeFetch = window.fetch.bind(window);
+window.fetch = (resource, options = {}) => {
+  const method = (options.method || 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD') return nativeFetch(resource, options);
+  const headers = new Headers(options.headers || {});
+  headers.set('X-Signal-Ledger', '1');
+  return nativeFetch(resource, { ...options, headers });
+};
+
 let nodes = [
   { id: 'mayor', label: 'Paragould City Clerk', type: 'Government', x: 180, y: 130, status: 'fact', summary: 'City records office identified as the official source for municipal meeting records, bids, and contract files.', tags: ['Local government', 'Records custodian'], sources: [['City portal · agendas and procurement', 'https://ar-paragould.civicplus.com/', 'Captured 12 Aug 2026'], ['Paragould council and public notices', 'https://ar-paragould.civicplus.com/', 'Captured 12 Aug 2026']] },
   { id: 'meridian', label: 'Meridian Civic Group', type: 'Entity', x: 395, y: 95, status: 'fact', summary: 'Local consulting entity appearing in procurement and business records tied to county or municipal work.', tags: ['Vendor', 'Awarded contract'], sources: [['Arkansas Secretary of State business registry', 'https://www.sos.arkansas.gov/', 'Captured 12 Aug 2026']] },
