@@ -508,3 +508,12 @@ button.primary-button:active {
 .foia-agency > summary { cursor: pointer; }
 .foia-item { border-top: 1px solid var(--line, #e5e8ec); padding: 10px 0; }
 .foia-log-heading { margin: 22px 0 8px; }
+
+.toolbar select { margin-left: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line, #d9dde3); background: #fff; }
+.search-results { margin: 12px 0; padding: 14px 18px; border: 1px solid var(--line, #d9dde3); border-radius: 8px; background: #fff; max-height: 60vh; overflow: auto; }
+.search-hit { border-top: 1px solid var(--line, #e5e8ec); padding: 10px 0; }
+.search-hit small { display: block; color: #667085; word-break: break-all; }
+.search-hit mark { background: #fff3a3; }
+
+/* Layout rules set display on views; the hidden attribute must always win. */
+[hidden] { display: none !important; }

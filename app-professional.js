@@ -124,6 +124,53 @@ async function refreshEvidenceTable() {
 }
 
 // Render evidence table
+function markedExcerpt(text) {
+  return escapeHtml(text).replace(/&lt;mark&gt;/g, '<mark>').replace(/&lt;\/mark&gt;/g, '</mark>');
+}
+
+function safeHref(url) {
+  return /^https?:\/\//i.test(url) ? escapeHtml(url) : '#';
+}
+
+async function initSearch() {
+  const input = document.getElementById('search');
+  const agency = document.getElementById('search-agency');
+  const kind = document.getElementById('search-kind');
+  const results = document.getElementById('search-results');
+  if (!input || !results) return;
+  const catalog = await fetch('/api/source-catalog').then(r => r.ok ? r.json() : []);
+  catalog.filter(item => item.hosts && item.hosts.length).forEach(item => agency.append(new Option(item.label, item.id)));
+  let timer;
+  let latest = 0;
+  const run = async () => {
+    const term = input.value.trim();
+    if (term.length < 2) { results.hidden = true; return; }
+    const ticket = ++latest;
+    const params = new URLSearchParams({ q: term });
+    if (agency.value) params.set('agency', agency.value);
+    if (kind.value) params.set('kind', kind.value);
+    const unfiltered = !agency.value && !kind.value;
+    const [docResponse, recordResponse] = await Promise.all([
+      fetch(`/api/search-text?${params}`),
+      unfiltered ? fetch(`/api/search?q=${encodeURIComponent(term)}`) : Promise.resolve(null)
+    ]);
+    if (ticket !== latest) return;
+    const docs = docResponse.ok ? await docResponse.json() : [];
+    const records = recordResponse && recordResponse.ok ? await recordResponse.json() : [];
+    results.hidden = false;
+    results.innerHTML = `
+      <h3>Captured pages and documents · ${docs.length}</h3>
+      ${docs.map(doc => `<article class="search-hit"><a href="${safeHref(doc.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(doc.title || doc.url)}</a>
+        <small>${escapeHtml(doc.url)} · ${doc.content_type === 'application/pdf' ? 'PDF' : 'Web page'} · captured ${escapeHtml((doc.captured_at || '').slice(0, 10))} · SHA-256 ${escapeHtml((doc.sha256 || '').slice(0, 12))}</small>
+        <p>${markedExcerpt(doc.excerpt || '')}</p></article>`).join('') || '<p>No captured pages match. Absence here is not absence in the public record: consider a records request.</p>'}
+      ${unfiltered ? `<h3>Casefile records · ${records.length}</h3>${records.map(item => `<article class="search-hit"><strong>${escapeHtml(item.title)}</strong> <small>${escapeHtml(item.result_type)}</small><p>${escapeHtml(item.detail || '')}</p></article>`).join('') || '<p>No casefile records match.</p>'}` : ''}`;
+  };
+  const schedule = () => { clearTimeout(timer); timer = setTimeout(() => run().catch(error => console.error('Search failed:', error)), 250); };
+  input.addEventListener('input', schedule);
+  agency.addEventListener('change', schedule);
+  kind.addEventListener('change', schedule);
+}
+
 function renderCoverage() {
   const total = liveEvidenceData.length;
   const cited = liveEvidenceData.filter(item => item.url && (item.captured_at || item.recorded_at)).length;
@@ -420,7 +467,7 @@ function renderDiscrepancies() {
   
   if (!liveDiscrepancies.length) {
     counter.textContent = '0 open';
-    list.innerHTML = '<article><span class="signal-number">00</span><div><strong>No active discrepancies</strong><p>All reviewed records are consistent.</p></div><span class="priority low">Clear</span></article>';
+    list.innerHTML = '<article><span class="signal-number">00</span><div><strong>No discrepancies recorded</strong><p>No comparison has been run yet. An empty list does not mean the records are consistent.</p></div><span class="priority medium">Not run</span></article>';
     return;
   }
   
@@ -599,6 +646,7 @@ fetch('/api/case').then(response => {
     renderCoverage();
   }
 
+  initSearch().catch(error => console.error('Search init failed:', error));
   refreshFoiaPlan().catch(error => console.error('FOIA plan failed:', error));
   refreshClaims().catch(error => console.error('Claims refresh failed:', error));
   refreshCollectionAudit().catch(error => console.error('Collection audit refresh failed:', error));

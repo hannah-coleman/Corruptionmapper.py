@@ -1,4 +1,4 @@
-bn6 <!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -153,7 +153,7 @@ bn6 <!doctype html>
     <main class="main-content">
       <header class="topbar"><div><span class="eyebrow">RESEARCH / MUNICIPAL CONTRACTING REVIEW</span><h1>Connection map</h1></div><div class="top-actions"><input id="record-file" type="file" accept=".json,.csv" hidden><button class="quiet-button" id="import-records">Import records</button><button class="primary-button" id="trigger-collection-button">＋ Collect public sources</button></div></header>
       <section class="notice"><span class="notice-icon">i</span><p><strong>Provenance first.</strong> This workspace records conduct and process, not guilt. It distinguishes sourced facts from hypotheses and preserves exculpatory information. Sample records are fictional and provided only to demonstrate the workflow.</p><button class="close-notice" aria-label="Dismiss notice">×</button></section>
-      <div class="toolbar"><label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search people, entities, sources..." aria-label="Search the research set"></label><div class="segmented"><button class="segment active">All</button><button class="segment">People</button><button class="segment">Entities</button></div><button class="filter-button">☷ Filters <span class="filter-count">2</span></button></div><div id="search-results" class="search-results" hidden></div>
+      <div class="toolbar"><label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search names, places, topics across captured records..." aria-label="Search the research set"></label><select id="search-agency" aria-label="Filter by agency"><option value="">All agencies</option></select><select id="search-kind" aria-label="Filter by file type"><option value="">Pages and PDFs</option><option value="html">Web pages only</option><option value="pdf">PDFs only</option></select></div><div id="search-results" class="search-results" hidden></div>
       <div id="map-view" class="view workspace-grid">
         <section class="map-panel panel"><div class="panel-heading"><div><span class="eyebrow">RELATIONSHIP GRAPH</span><h2>What connects to what</h2></div><div class="legend"><span><i class="fact"></i>Sourced</span><span><i class="lead"></i>Unverified lead</span></div></div><div class="graph-wrap"><svg id="graph" viewBox="0 0 760 470" role="img" aria-label="Relationship graph of sourced entities"></svg><div class="graph-hint">Select a node to inspect its evidence trail</div></div><div class="map-footer"><span><b id="node-count">0</b> nodes · <b id="edge-count">0</b> relationships</span><button class="text-button">＋ Add relationship</button></div></section>
         <aside class="detail-panel panel"><div id="detail-content"></div></aside>
