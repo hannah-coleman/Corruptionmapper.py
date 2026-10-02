@@ -23,7 +23,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
     targets: Path = Path("targets.txt")
     # Protection levels this server may expose; evidence labeled otherwise (or unlabeled) is withheld.
     visible_levels = web_security.PUBLIC_LEVELS
-    public_files = {"/", "/index.html", "/app.js", "/app-professional.js", "/style.css", "/style-professional.css"}
+    public_files = {"/", "/index.html", "/app-professional.js", "/style.css", "/style-professional.css"}
 
     def do_GET(self) -> None:
         route = urlparse(self.path).path
@@ -122,6 +122,27 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
     def visible_records(self, records: list[dict]) -> list[dict]:
         return web_security.visible(records, self.visible_levels)
 
+    def captured_documents(self) -> list[dict]:
+        if not self.search_database.exists():
+            return []
+        search_connection = sqlite3.connect(self.search_database)
+        search_connection.row_factory = sqlite3.Row
+        try:
+            return [dict(row) for row in search_connection.execute("SELECT url, title, content FROM documents")]
+        except sqlite3.Error:
+            return []
+        finally:
+            search_connection.close()
+
+    def case_time_range(self) -> str:
+        try:
+            scope = json.loads(Path("evidence/casefile.json").read_text(encoding="utf-8")).get("scope", {})
+            start = datetime.fromisoformat(scope["start"]).strftime("%B %-d, %Y")
+            end = scope.get("end")
+            return f"{start} to {datetime.fromisoformat(end).strftime('%B %-d, %Y')}" if end else f"{start} to present"
+        except (OSError, ValueError, KeyError, TypeError):
+            return "the relevant period"
+
     def send_api(self, route: str) -> None:
         if not self.database.exists():
             self.send_json({"error": "Casefile database not found. Initialize it first."}, 404)
@@ -179,6 +200,12 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             elif route == "/api/claims":
                 from claim_store import load_claims
                 payload = load_claims(Path("evidence/claims.json"))
+            elif route == "/api/foia-plan":
+                from foia_plan import build_plan
+                from request_queue import list_requests
+                registry = json.loads(self.registry.read_text(encoding="utf-8")) if self.registry.exists() else []
+                payload = {"time_range": self.case_time_range(), "agencies": build_plan(
+                    registry, self.captured_documents(), list_requests(Path("evidence/requests.json")), self.case_time_range())}
             elif route == "/api/research-queue":
                 from claim_store import load_claims, research_queue
                 payload = research_queue(load_claims(Path("evidence/claims.json")))

@@ -65,7 +65,7 @@ def ingest(database: Path, case_id: str, records_path: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Ingest reviewed normalized records into a casefile.")
     parser.add_argument("records", type=Path, help="Reviewed JSON array of normalized records")
-    parser.add_argument("--case-id", default="case-example-001")
+    parser.add_argument("--case-id", default="paragould-greene-001")
     parser.add_argument("--database", type=Path, default=Path("evidence/signal-ledger.sqlite"))
     args = parser.parse_args()
     args.database.parent.mkdir(parents=True, exist_ok=True)

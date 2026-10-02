@@ -41,7 +41,7 @@ def import_manifest(database: Path, case_id: str, manifest: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Import public discovery snapshots as source records.")
     parser.add_argument("manifest", type=Path)
-    parser.add_argument("--case-id", default="case-example-001")
+    parser.add_argument("--case-id", default="paragould-greene-001")
     parser.add_argument("--database", type=Path, default=Path("evidence/signal-ledger.sqlite"))
     args = parser.parse_args()
     print(f"Imported {import_manifest(args.database, args.case_id, args.manifest)} source snapshots")

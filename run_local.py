@@ -21,7 +21,7 @@ def available_port(start: int) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Launch a local Signal Ledger casefile.")
-    parser.add_argument("--casefile", type=Path, default=Path("casefile.example.json"))
+    parser.add_argument("--casefile", type=Path, default=Path("evidence/casefile.json"))
     parser.add_argument("--database", type=Path, default=Path("evidence/signal-ledger.sqlite"))
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()

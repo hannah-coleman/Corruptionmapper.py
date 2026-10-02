@@ -11,27 +11,22 @@ window.fetch = (resource, options = {}) => {
   return nativeFetch(resource, { ...options, headers });
 };
 
-let nodes = [
-  { id: 'mayor', label: 'Paragould City Clerk', type: 'Government', x: 180, y: 130, status: 'fact', summary: 'City records office identified as the official source for municipal meeting records, bids, and contract files.', tags: ['Local government', 'Records custodian'], sources: [['City portal · agendas and procurement', 'https://ar-paragould.civicplus.com/', 'Captured 12 Aug 2026'], ['Paragould council and public notices', 'https://ar-paragould.civicplus.com/', 'Captured 12 Aug 2026']] },
-  { id: 'meridian', label: 'Meridian Civic Group', type: 'Entity', x: 395, y: 95, status: 'fact', summary: 'Local consulting entity appearing in procurement and business records tied to county or municipal work.', tags: ['Vendor', 'Awarded contract'], sources: [['Arkansas Secretary of State business registry', 'https://www.sos.arkansas.gov/', 'Captured 12 Aug 2026']] },
-  { id: 'chief', label: 'Greene County Finance Office', type: 'Government', x: 610, y: 145, status: 'lead', summary: 'Secondary local records trail points to county financial oversight and meeting minutes that may include the relevant funding references.', tags: ['County government', 'Unverified lead'], sources: [['Greene County official site', 'https://www.greenecounty.arkansas.gov/', 'Captured 13 Aug 2026']] },
-  { id: 'civic', label: 'Paragould Vendor Ledger', type: 'Entity', x: 255, y: 270, status: 'fact', summary: 'Business registration and vendor record ties connect the entity to an address and local filing activity.', tags: ['Registered entity', 'Shared address'], sources: [['Arkansas business records search', 'https://www.sos.arkansas.gov/', 'Captured 11 Aug 2026']] },
-  { id: 'grant', label: 'Arkansas grant funds', type: 'Public money', x: 500, y: 255, status: 'fact', summary: 'Public-funds trail documents the local funding channel and state-level transparency references.', tags: ['Public funds'], sources: [['Arkansas transparency portal', 'https://transparency.arkansas.gov/', 'Captured 12 Aug 2026']] },
-  { id: 'address', label: 'Paragould business address', type: 'Location', x: 375, y: 380, status: 'lead', summary: 'Address documentation requires direct verification against local business filings and public notices.', tags: ['Connection lead'], sources: [['Paragould and Greene County official sites', 'https://ar-paragould.civicplus.com/, https://www.greenecounty.arkansas.gov/', 'Captured 11 Aug 2026']] },
-  { id: 'firm', label: 'Arkansas legal services', type: 'Entity', x: 620, y: 350, status: 'fact', summary: 'Outside legal review appears in local government records and related public attachments.', tags: ['Professional services'], sources: [['Paragould city and county records', 'https://ar-paragould.civicplus.com/', 'Captured 12 Aug 2026']] },
-  { id: 'watchdog', label: 'Local public records watch', type: 'Organization', x: 115, y: 350, status: 'fact', summary: 'Public-interest organization used for context only; not a subject of the local review.', tags: ['Source organization'], sources: [['Official public records guidance', 'https://www.arkansasethics.com/', 'Captured 13 Aug 2026']] }
-];
-let edges = [['mayor','meridian','fact'],['mayor','grant','fact'],['meridian','civic','fact'],['meridian','grant','fact'],['meridian','chief','lead'],['civic','address','fact'],['address','firm','lead'],['chief','watchdog','fact'],['grant','firm','fact'],['mayor','civic','lead'],['civic','firm','lead']];
+let nodes = [];
+let edges = [];
 const graph = document.querySelector('#graph');
 const detail = document.querySelector('#detail-content');
 let lookup = Object.fromEntries(nodes.map(node => [node.id, node]));
-let selected = 'meridian';
+let selected = null;
 let liveEvidenceData = [];
 let liveDiscrepancies = [];
 let liveClaims = [];
 
 function renderGraph() { 
   graph.innerHTML = ''; 
+  if (!nodes.length) {
+    const empty=document.createElementNS('http://www.w3.org/2000/svg','text');empty.setAttribute('x',380);empty.setAttribute('y',235);empty.setAttribute('text-anchor','middle');empty.setAttribute('class','node-label');empty.textContent='No entities yet. Add sourced entities from reviewed evidence.';graph.appendChild(empty);
+    return;
+  }
   edges.forEach(([from,to,status]) => { 
     const a=lookup[from], b=lookup[to]; 
     const line=document.createElementNS('http://www.w3.org/2000/svg','line'); 
@@ -45,10 +40,18 @@ function renderGraph() {
 }
 
 function renderDetail(node) { 
-  detail.innerHTML=`<div class="detail-top"><span class="detail-type">${node.status==='lead'?'UNVERIFIED LEAD':'SOURCED RECORD'} · ${node.type.toUpperCase()}</span><h2 class="detail-title">${node.label}</h2><span class="detail-meta">Added 12 Aug 2026 · Confidence: ${node.status==='lead'?'needs review':'high'}</span></div><div class="detail-body"><h3>Working description</h3><p>${node.summary}</p><div>${node.tags.map(tag=>`<span class="tag">${tag}</span>`).join('')}</div><h3 style="margin-top:23px">Evidence trail · ${node.sources.length}</h3>${node.sources.map(source=>`<div class="evidence-item"><strong>${source[0]}</strong><a href="#" title="Source URL">${source[1]}</a><small>${source[2]}</small></div>`).join('')}<button class="primary-button" data-action="add-evidence" style="width:100%;margin-top:12px">＋ Add evidence</button></div>`; 
+  if (!node) { detail.innerHTML='<div class="detail-body"><h3>Nothing selected</h3><p>The relationship graph is empty until sourced entities are added.</p></div>'; return; }
+  detail.innerHTML=`<div class="detail-top"><span class="detail-type">${node.status==='lead'?'UNVERIFIED LEAD':'SOURCED RECORD'} · ${node.type.toUpperCase()}</span><h2 class="detail-title">${node.label}</h2><span class="detail-meta">Status: ${node.status==='lead'?'needs review':'sourced'}</span></div><div class="detail-body"><h3>Working description</h3><p>${node.summary}</p><div>${node.tags.map(tag=>`<span class="tag">${tag}</span>`).join('')}</div><h3 style="margin-top:23px">Evidence trail · ${node.sources.length}</h3>${node.sources.map(source=>`<div class="evidence-item"><strong>${source[0]}</strong><a href="#" title="Source URL">${source[1]}</a><small>${source[2]}</small></div>`).join('')}<button class="primary-button" data-action="add-evidence" style="width:100%;margin-top:12px">＋ Add evidence</button></div>`; 
 }
 
 renderGraph();renderDetail(lookup[selected]);
+
+function renderGraphCounts() {
+  const nodeCount = document.querySelector('#node-count');
+  const edgeCount = document.querySelector('#edge-count');
+  if (nodeCount) nodeCount.textContent = nodes.length;
+  if (edgeCount) edgeCount.textContent = edges.length;
+}
 
 // Initialize modals and forms
 function initModals() {
@@ -114,12 +117,30 @@ async function refreshEvidenceTable() {
     if (!response.ok) throw new Error('Failed to load evidence');
     liveEvidenceData = await response.json();
     renderEvidenceTable();
+    renderCoverage();
   } catch (error) {
     console.error('Evidence refresh failed:', error);
   }
 }
 
 // Render evidence table
+function renderCoverage() {
+  const total = liveEvidenceData.length;
+  const cited = liveEvidenceData.filter(item => item.url && (item.captured_at || item.recorded_at)).length;
+  const percent = total ? Math.round((cited / total) * 100) : 0;
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  set('coverage-percent', `${percent}%`);
+  set('coverage-headline', total ? (percent === 100 ? 'All records cited' : 'Citations incomplete') : 'No evidence yet');
+  set('coverage-detail', total ? `${cited} of ${total} records have a source URL and capture date.` : 'Preserve or collect a source to begin.');
+  const counts = { primary: 0, secondary: 0, lead: 0 };
+  liveEvidenceData.forEach(item => { const kind = String(item.kind || ''); if (kind.includes('primary')) counts.primary++; else if (kind.includes('secondary')) counts.secondary++; else counts.lead++; });
+  Object.entries(counts).forEach(([key, value]) => {
+    set(`coverage-${key}-count`, value);
+    const bar = document.getElementById(`coverage-${key}-bar`);
+    if (bar) bar.style.width = `${total ? Math.round((value / total) * 100) : 0}%`;
+  });
+}
+
 function renderEvidenceTable() {
   const tbody = document.querySelector('#evidence-view tbody');
   if (!tbody) return;
@@ -430,6 +451,39 @@ function renderRequestTable(requests) {
   table.innerHTML = requests.map(item => `<tr><td><strong>${escapeHtml(item.description)}</strong><small>${escapeHtml(item.date_range || 'Date range not recorded')}</small></td><td>${escapeHtml(item.agency)}</td><td>${escapeHtml(item.custodian || 'Not recorded')}</td><td><span class="table-status review">${escapeHtml(item.status)}</span><small>${escapeHtml(item.deadline ? `Deadline: ${item.deadline}` : 'No deadline recorded')}</small><small>Response files: ${(item.response_evidence_ids || []).length}</small><button class="quiet-button" data-action="link-response-evidence" data-request-id="${escapeHtml(item.id)}">Link response</button></td></tr>`).join('');
 }
 
+async function refreshFoiaPlan() {
+  const container = document.getElementById('foia-plan');
+  if (!container) return;
+  const response = await fetch('/api/foia-plan');
+  if (!response.ok) { container.innerHTML = '<p>FOIA plan unavailable.</p>'; return; }
+  const plan = await response.json();
+  container.innerHTML = plan.agencies.map((agency, a) => `
+    <details class="foia-agency"${agency.suggestions.some(s => s.basis === 'evidence-indicated') ? ' open' : ''}>
+      <summary><strong>${escapeHtml(agency.agency)}</strong> · ${escapeHtml(agency.law)} · ${agency.captured_pages} captured page(s)</summary>
+      <p><small>Route: ${escapeHtml(agency.route || 'not recorded')}${agency.law_note ? ' · ' + escapeHtml(agency.law_note) : ''}${agency.source_status === 'verify-official-url' ? ' · Verify the official URL and custodian before filing.' : ''}</small></p>
+      ${agency.suggestions.map((item, i) => `
+        <article class="foia-item">
+          <strong>${escapeHtml(item.document_type)}</strong> <span class="table-status ${item.basis === 'evidence-indicated' ? 'review' : 'sourced'}">${item.basis === 'evidence-indicated' ? 'Indicated by captured pages' : 'Standard record set'}</span>
+          <p>${escapeHtml(item.rationale)}</p>
+          ${item.evidence.map(e => `<small>${escapeHtml(e.url)}: “…${escapeHtml(e.excerpt)}…”</small>`).join('<br>')}
+          <details><summary>Draft request text</summary><p>${escapeHtml(item.draft.request_text)}</p><ul>${item.draft.notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul></details>
+          ${item.already_requested ? '<small>Already in your request log.</small>' : `<button class="text-button" data-foia-agency="${a}" data-foia-item="${i}">＋ Add draft to request log</button>`}
+        </article>`).join('')}
+    </details>`).join('') || '<p>No agencies in the source registry.</p>';
+  container.onclick = async event => {
+    const button = event.target.closest('[data-foia-agency]');
+    if (!button) return;
+    const agency = plan.agencies[Number(button.dataset.foiaAgency)];
+    const item = agency.suggestions[Number(button.dataset.foiaItem)];
+    button.disabled = true;
+    const saved = await fetch('/api/request-queue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      agency: agency.agency, description: item.draft.request_text, date_range: plan.time_range, status: 'draft', jurisdiction: agency.jurisdiction }) });
+    if (!saved.ok) { button.disabled = false; alert((await saved.json()).error || 'Could not save draft'); return; }
+    button.replaceWith(Object.assign(document.createElement('small'), { textContent: 'Added to request log.' }));
+    refreshRequests().catch(() => {});
+  };
+}
+
 async function refreshRequests() {
   const response = await fetch('/api/request-queue');
   if (!response.ok) throw new Error('Failed to load request log');
@@ -523,8 +577,8 @@ fetch('/api/case').then(response => {
     selected = nodes[0]?.id;
     renderGraph();
     renderDetail(lookup[selected]);
-    document.querySelector('#node-count').textContent = nodes.length;
   }
+  renderGraphCounts();
   
   if (catalogResponse.ok) {
     const catalog = await catalogResponse.json();
@@ -542,8 +596,10 @@ fetch('/api/case').then(response => {
   if (evidenceResponse.ok) {
     liveEvidenceData = await evidenceResponse.json();
     renderEvidenceTable();
+    renderCoverage();
   }
 
+  refreshFoiaPlan().catch(error => console.error('FOIA plan failed:', error));
   refreshClaims().catch(error => console.error('Claims refresh failed:', error));
   refreshCollectionAudit().catch(error => console.error('Collection audit refresh failed:', error));
   refreshSourceChanges().catch(error => console.error('Source change refresh failed:', error));
@@ -613,7 +669,7 @@ function initializeUi() {
       selected = nodes[0]?.id;
       renderGraph();
       renderDetail(lookup[selected]);
-      document.querySelector('#node-count').textContent = nodes.length;
+      renderGraphCounts();
     } catch (error) {
       alert(`Import failed: ${error.message}`);
     }
@@ -638,25 +694,6 @@ function initializeUi() {
   document.getElementById('export-counsel-packet')?.addEventListener('click', () => exportCounselPacket().catch(error => alert(`Error: ${error.message}`)));
   document.getElementById('print-counsel-packet')?.addEventListener('click', openPrintableCounselPacket);
   document.getElementById('run-approved-collection')?.addEventListener('click', () => runApprovedCollection().catch(error => alert(`Error: ${error.message}`)));
-  
-  // Collection button
-  document.getElementById('trigger-collection-button')?.addEventListener('click', async () => {
-    const demoUrls = ['https://www.sos.arkansas.gov/', 'https://transparency.arkansas.gov/', 'https://www.arkansasethics.com/'];
-    try {
-      const response = await fetch('/api/collect', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ urls: demoUrls })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Collection failed');
-      const summary = payload.results.filter(r => r.status === 'collected').length;
-      alert(`Collection complete: ${summary} public source(s) preserved.`);
-      refreshEvidenceTable();
-    } catch (error) {
-      alert(`Collection failed: ${error.message}`);
-    }
-  });
   
   // Close notice
   document.querySelectorAll('.close-notice').forEach(btn => {

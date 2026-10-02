@@ -502,3 +502,9 @@ button.primary-button:active {
     grid-template-columns: 1fr;
   }
 }
+
+.foia-plan { margin: 18px 0; }
+.foia-agency { border: 1px solid var(--line, #d9dde3); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; }
+.foia-agency > summary { cursor: pointer; }
+.foia-item { border-top: 1px solid var(--line, #e5e8ec); padding: 10px 0; }
+.foia-log-heading { margin: 22px 0 8px; }
