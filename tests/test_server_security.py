@@ -84,7 +84,7 @@ def test_posts_require_csrf_header_and_same_origin(running):
 
 def test_oversized_json_body_is_rejected(running):
     port, _ = running
-    status, _ = request(port, "POST", "/api/claims", body=b"{" + b" " * 1_100_000 + b"}", headers=TRUSTED)
+    status, _ = request(port, "POST", "/api/claims", body=b"{}", headers={**TRUSTED, "Content-Length": "5000000"})
     assert status == 400
 
 
