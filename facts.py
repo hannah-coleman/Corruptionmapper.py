@@ -136,6 +136,10 @@ def review_fact(path: Path | str, fact_id_: str, review: dict) -> dict:
     reviewer = str(review.get("reviewer", "")).strip()
     note = str(review.get("note", "")).strip()
     corrected = str(review.get("corrected_value", "")).strip()
+    subject = " ".join(str(review.get("subject", "")).split())
+    attribute = " ".join(str(review.get("attribute", "")).split())
+    if bool(subject) != bool(attribute):
+        raise ValueError("Give both a subject and an attribute (for example 'Contract 2025-14' and 'award amount'), or neither.")
     if disposition not in DISPOSITIONS:
         raise ValueError("Disposition must be confirmed or rejected.")
     if not reviewer:
@@ -153,7 +157,11 @@ def review_fact(path: Path | str, fact_id_: str, review: dict) -> dict:
                 raise ValueError("Only a confirmed fact can carry a corrected value.")
             fact["original_value"] = fact["value"]
             fact["value"] = corrected
+        if subject and disposition == "rejected":
+            raise ValueError("A rejected fact cannot be linked to a subject.")
         fact.update({"status": disposition, "reviewer": reviewer, "review_note": note, "reviewed_at": datetime.now(timezone.utc).isoformat()})
+        if subject:
+            fact.update({"subject": subject, "attribute": attribute})
         _write(path, facts)
         return fact
     raise ValueError("Fact not found.")
@@ -165,6 +173,10 @@ def add_manual_fact(path: Path | str, entry: dict, source: dict, protection: str
     value = str(entry.get("value", "")).strip()
     passage = " ".join(str(entry.get("passage", "")).split())
     reviewer = str(entry.get("reviewer", "")).strip()
+    subject = " ".join(str(entry.get("subject", "")).split())
+    attribute = " ".join(str(entry.get("attribute", "")).split())
+    if bool(subject) != bool(attribute):
+        raise ValueError("Give both a subject and an attribute, or neither.")
     if kind not in KINDS or not value or not passage or not reviewer:
         raise ValueError("Kind, value, the exact source passage, and your name are required.")
     if kind == "date" and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
@@ -180,6 +192,8 @@ def add_manual_fact(path: Path | str, entry: dict, source: dict, protection: str
         "protection": protection, "status": "confirmed", "extracted_by": f"manual:{reviewer}", "extracted_at": now,
         "reviewer": reviewer, "review_note": "Entered manually from the preserved source.", "reviewed_at": now,
     }
+    if subject:
+        fact.update({"subject": subject, "attribute": attribute})
     existing = load_facts(path)
     if any(item["id"] == fact["id"] for item in existing):
         raise ValueError("This fact is already recorded.")
