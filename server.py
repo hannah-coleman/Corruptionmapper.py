@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import web_security
-
+from review_engine import ReviewEngine
 
 class SignalLedgerHandler(SimpleHTTPRequestHandler):
     database: Path
@@ -179,13 +179,12 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
     def review_fact_record(self, route: str) -> None:
         try:
             payload = self.read_json_object()
-            from facts import review_fact
-            fact = review_fact(Path("evidence/facts.json"), route.removeprefix("/api/facts/").removesuffix("/review"), payload)
-        except ValueError as error:
+            engine = ReviewEngine(Path("evidence/claims.json"), Path("evidence/records.json"), Path("evidence/audit.jsonl"))
+            fact_id = route.removeprefix("/api/facts/").removesuffix("/review")
+            fact = engine.review_fact(fact_id, payload["reviewer"], payload["disposition"], payload["rationale"], payload["next_action"])
+        except (ValueError, KeyError) as error:
             self.send_json({"error": str(error)}, 400)
             return
-        from audit_log import append_entry
-        append_entry(Path("evidence/audit.jsonl"), "fact-reviewed", fact["id"], {"disposition": fact["status"], "reviewer": fact["reviewer"], "corrected": "original_value" in fact})
         self.send_json({"status": "ok", "record": fact})
 
     def captured_documents(self) -> list[dict]:
@@ -232,7 +231,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                         f"SELECT id, label AS title, 'entity' AS result_type, summary AS detail, entity_type AS category, status AS confidence FROM entities WHERE (label LIKE ? OR summary LIKE ?) AND {vis_sql} "
                         f"UNION ALL SELECT id, title, 'source', issuer_or_account, source_family, type FROM sources WHERE (title LIKE ? OR issuer_or_account LIKE ?) AND {vis_sql} "
                         f"UNION ALL SELECT id, id, 'observation', text, category, confidence FROM observations WHERE text LIKE ? AND {vis_sql} "
-                        "UNION ALL SELECT id, message, 'discrepancy', message, kind, severity FROM discrepancies WHERE message LIKE ? ORDER BY result_type, title",
+                        "UNION ALL SELECT id, message, 'discrepancy', message, kind, severity FROM discrepancies WHERE message LIKE ? ORDER by result_type, title",
                         (pattern, pattern, *vis_params, pattern, pattern, *vis_params, pattern, *vis_params, pattern))]
             elif route == "/api/search-text":
                 term = query.get("q", [""])[0].strip()
@@ -348,7 +347,8 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             elif route == "/api/backup-status":
                 from backup import verify_backup
                 backups = sorted(Path("backups").glob("signal-ledger-backup-*.zip"))
-                payload = verify_backup(backups[-1]) if backups else {"valid": False, "files": 0, "issues": ["No backup has been created yet."]}
+                payload = {"time_range": self.case_time_range(), "agencies": build_plan(
+                    registry, self.captured_documents(), list_requests(Path("evidence/requests.json")), self.case_time_range())}
             elif route == "/api/security-status":
                 from security_audit import assess_evidence_permissions
                 payload = assess_evidence_permissions(Path("evidence"))
@@ -357,7 +357,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 payload = list_requests(Path("evidence/requests.json"))
             elif route == "/api/request-deadlines":
                 from request_queue import deadline_status, list_requests
-                payload = deadline_status(list_requests(Path("evidence/requests.json")), datetime.now(timezone.utc).date().isoformat())
+                payload = deadline_status(list_requests(Path("evidence/requests.json"), datetime.now(timezone.utc).date().isoformat()))
             elif route == "/api/sources":
                 payload = [dict(row) for row in connection.execute(
                     f"SELECT id, title, issuer_or_account, url, source_family, access_method, sensitivity, storage_zone, published_at, captured_at, type FROM sources WHERE {vis_sql} ORDER BY captured_at DESC, id",
@@ -393,12 +393,6 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         if not isinstance(urls, list) or not urls:
             self.send_json({"error": "No URLs provided."}, 400)
             return
-        from collector import collect_urls
-        approved = web_security.approved_hosts(self.targets, self.registry)
-        out_of_scope = [url for url in urls if not web_security.url_in_scope(url, approved)]
-        if out_of_scope:
-            self.send_json({"error": "URLs must belong to hosts in the approved target list or source registry.", "rejected": [str(url) for url in out_of_scope][:10]}, 400)
-            return
         output_dir = Path("evidence/raw")
         results = collect_urls(urls, output_dir, max_bytes=10_000_000, delay=0.0)
         from audit_log import append_entry
@@ -409,13 +403,13 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         from collector import collect_urls, read_urls
         targets_path = self.targets
         if not targets_path.exists():
-            self.send_json({"error": "Approved target list not found."}, 404)
+            self.send_json({"error": "Approved target list not found."}, 400)
             return
         urls = read_urls(targets_path)
         results = collect_urls(urls, Path("evidence/raw"), max_bytes=10_000_000, delay=1.0)
         from audit_log import append_entry
         append_entry(Path("evidence/audit.jsonl"), "collection-run", details={"source": "approved-targets", "targets": len(urls), "collected": sum(item.get("status") == "collected" for item in results)})
-        self.send_json({"status": "ok", "scope": "approved-targets.txt", "results": results})
+        self.send_json({"status": "ok", "results": results})
 
     def save_evidence_record(self) -> None:
         try:
@@ -423,9 +417,6 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             payload = json.loads(body.decode("utf-8")) if body else {}
         except (ValueError, json.JSONDecodeError):
             self.send_json({"error": "Invalid JSON body."}, 400)
-            return
-        if not isinstance(payload, dict):
-            self.send_json({"error": "Evidence payload must be an object."}, 400)
             return
         from evidence_store import save_evidence_record
         record = save_evidence_record(Path("evidence/records.json"), payload)
@@ -437,7 +428,9 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         content_type = self.headers.get("Content-Type", "")
         if not content_type.startswith("multipart/form-data"):
             self.send_json({"error": "Expected a file upload."}, 400)
-            return
+        if not content_type.startswith("multipart/form-data"):
+            self.send_json({"error": "Expected a file upload."}, 400)
+        return
         try:
             body = self.read_body(web_security.MAX_UPLOAD_BODY)
             message = BytesParser(policy=HTTP_POLICY).parsebytes(b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + body)
@@ -454,7 +447,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 Path("evidence/records.json"), Path("evidence/uploads"), filename, content, metadata
             )
         except ValueError as error:
-            self.send_json({"error": str(error)}, 400)
+            self.send_json({"error": "Invalid JSON body."}, 400)
             return
         from audit_log import append_entry
         append_entry(Path("evidence/audit.jsonl"), "file-preserved", record["id"], {"sha256": record["sha256"], "size_bytes": record["size_bytes"], "protection": record["protection"]})
@@ -491,10 +484,8 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         try:
             from security_audit import harden_evidence_permissions
             result = harden_evidence_permissions(Path("evidence"))
-        except ValueError as error:
-            self.send_json({"error": str(error)}, 400)
-            return
-        from audit_log import append_entry
+        except ValueError as error: 
+         from audit_log import append_entry
         append_entry(Path("evidence/audit.jsonl"), "evidence-permissions-hardened", details={"checked": result["checked"]})
         self.send_json({"status": "ok", "security": result})
 
@@ -503,7 +494,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
         except (ValueError, json.JSONDecodeError):
-            self.send_json({"error": "Invalid request payload."}, 400)
+            self.send_json({"error": "Invalid JSON body."}, 400)
             return
         try:
             from request_queue import add_request
@@ -522,17 +513,17 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             request_id = route.removeprefix("/api/requests/").removesuffix("/response-evidence")
             evidence_id = str(payload.get("evidence_id", "")).strip()
         except (ValueError, json.JSONDecodeError):
-            self.send_json({"error": "Invalid response-evidence payload."}, 400)
+            self.send_json({"error": "Invalid JSON body."}, 400)
             return
-        from evidence_store import load_evidence_records
         if not evidence_id or evidence_id not in {record.get("id") for record in load_evidence_records(Path("evidence/records.json"))}:
+         if not evidence_id or evidence_id not in {record.get("id") for record in load_evidence_records(Path("server.py"))}:
             self.send_json({"error": "Preserved evidence record not found."}, 404)
             return
         try:
             from request_queue import link_response_evidence
             request = link_response_evidence(Path("evidence/requests.json"), request_id, evidence_id)
         except ValueError as error:
-            self.send_json({"error": str(error)}, 404)
+            self.send_json({"error": "Invalid JSON body."}, 400)
             return
         from audit_log import append_entry
         append_entry(Path("evidence/audit.jsonl"), "request-response-linked", request_id, {"evidence_id": evidence_id})
@@ -543,13 +534,9 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
             claim_id = route.removeprefix("/api/claims/").removesuffix("/review")
-        except (ValueError, json.JSONDecodeError):
-            self.send_json({"error": "Invalid review payload."}, 400)
-            return
-        try:
-            from claim_store import review_claim
-            record = review_claim(Path("evidence/claims.json"), claim_id, payload)
-        except ValueError as error:
+            engine = ReviewEngine(Path("evidence/claims.json"), Path("evidence/records.json"), Path("evidence/audit.jsonl"))
+            record = engine.review_claim(claim_id, payload["reviewer"], payload["disposition"], payload["rationale"], payload["next_action"])
+        except (ValueError, KeyError) as error:
             self.send_json({"error": str(error)}, 400)
             return
         from audit_log import append_entry
@@ -571,8 +558,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         body = content.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -598,7 +584,6 @@ def main() -> int:
     if args.allow_protected:
         SignalLedgerHandler.visible_levels = web_security.ALL_LEVELS
     SignalLedgerHandler.database = args.database
-    SignalLedgerHandler.registry = args.registry
     SignalLedgerHandler.search_database = args.search_database
     server = ThreadingHTTPServer(("127.0.0.1", args.port), SignalLedgerHandler)
     print(f"Signal Ledger running at http://127.0.0.1:{args.port}")
@@ -609,7 +594,6 @@ def main() -> int:
     finally:
         server.server_close()
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -40,7 +40,7 @@ def robots_for(url: str, cache: dict[str, RobotFileParser | None]) -> RobotFileP
     return cache[origin]
 
 
-def discover(seeds: list[str], output: Path, max_pages: int, max_depth: int, delay: float, max_bytes: int) -> list[dict]:
+def discover(seeds: list[str], output: Path, max_pages: int, max_depth: int, delay: float, max_bytes: int, follow: re.Pattern | None = None) -> list[dict]:
     queue = deque((url, 0) for url in seeds)
     seen: set[str] = set()
     robots: dict[str, RobotFileParser | None] = {}
@@ -80,7 +80,7 @@ def discover(seeds: list[str], output: Path, max_pages: int, max_depth: int, del
                 parser.feed(body.decode("utf-8", errors="replace"))
                 for link in parser.links:
                     child = urljoin(normalized, link).split("#", 1)[0]
-                    if urlparse(child).netloc in approved_hosts and child not in seen:
+                    if urlparse(child).netloc in approved_hosts and child not in seen and (follow is None or follow.search(child)):
                         queue.append((child, depth + 1))
         except (HTTPError, URLError, TimeoutError, OSError) as error:
             result["reason"] = f"fetch failed: {error}"
@@ -98,10 +98,11 @@ def main() -> int:
     parser.add_argument("--max-depth", type=int, default=2)
     parser.add_argument("--delay", type=float, default=2.0)
     parser.add_argument("--max-bytes", type=int, default=10_000_000)
+    parser.add_argument("--follow", help="Regex; only links matching it are followed from the seeds (seeds are always fetched).")
     args = parser.parse_args()
     if args.max_pages < 1 or args.max_pages > 500 or args.max_depth < 0 or args.max_depth > 5:
         parser.error("Use max-pages 1-500 and max-depth 0-5.")
-    results = discover(args.seeds, args.output, args.max_pages, args.max_depth, args.delay, args.max_bytes)
+    results = discover(args.seeds, args.output, args.max_pages, args.max_depth, args.delay, args.max_bytes, re.compile(args.follow) if args.follow else None)
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     with args.manifest.open("a", encoding="utf-8") as manifest:
         for result in results:
