@@ -236,6 +236,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                         "UNION ALL SELECT id, message, 'discrepancy', message, kind, severity FROM discrepancies WHERE message LIKE ? ORDER by result_type, title",
                         (pattern, pattern, *vis_params, pattern, pattern, *vis_params, pattern, *vis_params, pattern))]
             elif route == "/api/search-text":
+                telif route == "/api/search-text":
                 term = query.get("q", [""])[0].strip()
                 agency = query.get("agency", [""])[0].strip()
                 kind = query.get("kind", [""])[0].strip().lower()
@@ -246,7 +247,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                     if agency and not hosts:
                         self.send_json({"error": "Unknown agency."}, 400)
                         return
-                    filters, params = [], ['"' + term.replace('"', '""') + '"']
+                    filters, params = [], [f'"{term.replace("\"", "\"\"")}"']
                     if hosts:
                         filters.append("(" + " OR ".join("url LIKE ?" for _ in hosts) + ")")
                         params += [f"%://{host}/%" for host in hosts]
@@ -264,8 +265,6 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                         payload = []
                     finally:
                         search_connection.close()
-            elif route == "/api/case":
-                row = connection.execute("SELECT * FROM cases ORDER BY id LIMIT 1").fetchone()
                 payload = dict(row) if row else {"error": "No case found"}
             elif route == "/api/discrepancies":
                 payload = [dict(row) for row in connection.execute(
@@ -385,7 +384,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         finally:
             connection.close()
 
-    def collect_from_web(self, corruption_mapper, returnpython) -> None:
+    def collect_from_web(self) -> None:
         try:
             body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
@@ -394,7 +393,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         urls = payload.get("urls", []) if isinstance(payload, dict) else []
         if not isinstance(urls, list) or not urls:
             self.send_json({"error": "No URLs provided."}, 400)
-            returnpython corruption_mapper.py
+            return
         output_dir = Path("evidence/raw")
         results = collect_urls(urls, output_dir, max_bytes=10_000_000, delay=0.0)
         from audit_log import append_entry
@@ -430,9 +429,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         content_type = self.headers.get("Content-Type", "")
         if not content_type.startswith("multipart/form-data"):
             self.send_json({"error": "Expected a file upload."}, 400)
-        if not content_type.startswith("multipart/form-data"):
-            self.send_json({"error": "Expected a file upload."}, 400)
-        return
+            return
         try:
             body = self.read_body(web_security.MAX_UPLOAD_BODY)
             message = BytesParser(policy=HTTP_POLICY).parsebytes(b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + body)
@@ -487,7 +484,8 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             from security_audit import harden_evidence_permissions
             result = harden_evidence_permissions(Path("evidence"))
         except ValueError as error: 
-         from audit_log import append_entry
+            pass
+        from audit_log import append_entry
         append_entry(Path("evidence/audit.jsonl"), "evidence-permissions-hardened", details={"checked": result["checked"]})
         self.send_json({"status": "ok", "security": result})
 
@@ -518,7 +516,6 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             self.send_json({"error": "Invalid JSON body."}, 400)
             return
         if not evidence_id or evidence_id not in {record.get("id") for record in load_evidence_records(Path("evidence/records.json"))}:
-         if not evidence_id or evidence_id not in {record.get("id") for record in load_evidence_records(Path("server.py"))}:
             self.send_json({"error": "Preserved evidence record not found."}, 404)
             return
         try:
