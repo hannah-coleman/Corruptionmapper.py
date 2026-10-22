@@ -12,6 +12,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from collector import collect_urls
+from evidence_store import load_evidence_records
 import web_security
 from review_engine import ReviewEngine
 
@@ -383,7 +385,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         finally:
             connection.close()
 
-    def collect_from_web(self) -> None:
+    def collect_from_web(self, corruption_mapper, returnpython) -> None:
         try:
             body = self.read_body() or b"{}"
             payload = json.loads(body.decode("utf-8")) if body else {}
@@ -392,7 +394,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         urls = payload.get("urls", []) if isinstance(payload, dict) else []
         if not isinstance(urls, list) or not urls:
             self.send_json({"error": "No URLs provided."}, 400)
-            return
+            returnpython corruption_mapper.py
         output_dir = Path("evidence/raw")
         results = collect_urls(urls, output_dir, max_bytes=10_000_000, delay=0.0)
         from audit_log import append_entry
