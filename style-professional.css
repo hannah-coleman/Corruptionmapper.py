@@ -210,6 +210,78 @@ table tbody tr:hover {
   color: #53605a;
 }
 
+.ask-records {
+  margin: 0 22px 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fbfaf6;
+}
+
+.archive-discovery {
+  margin: 0 22px 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fbfaf6;
+}
+
+.archive-discovery h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.archive-discovery > p,
+.archive-coverage {
+  color: #65706b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.archive-discovery > p {
+  margin: 0 0 12px;
+}
+
+.archive-discovery .form-group {
+  margin-bottom: 10px;
+}
+
+.archive-coverage {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f5edcf;
+}
+
+.archive-coverage strong {
+  color: var(--ink);
+}
+
+.ask-records h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: normal;
+}
+
+.ask-records > p {
+  margin: 0 0 12px;
+  color: #65706b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ask-records .form-group {
+  margin-bottom: 10px;
+}
+
+.ask-records-results:empty {
+  display: none;
+}
+
+.ask-records-results {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #53605a;
+}
+
 .timeline-list {
   display: grid;
   gap: 0;

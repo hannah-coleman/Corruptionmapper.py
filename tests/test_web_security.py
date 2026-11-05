@@ -26,6 +26,8 @@ def test_url_scope_uses_targets_and_registry(tmp_path):
     assert url_in_scope("https://transparency.arkansas.gov/", hosts)
     assert not url_in_scope("http://169.254.169.254/latest", hosts)
     assert not url_in_scope("file:///etc/passwd", hosts)
+    assert not url_in_scope("https://www.sos.arkansas.gov:8443/page", hosts)
+    assert not url_in_scope("https://user@www.sos.arkansas.gov/page", hosts)
     assert not url_in_scope(["https://www.sos.arkansas.gov/"], hosts)
 
 

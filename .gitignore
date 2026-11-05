@@ -5,3 +5,6 @@ backups/
 __pycache__/
 .pytest_cache/
 .DS_Store
+.private-terms.txt
+evidence/places.json
+evidence/layoffs.json

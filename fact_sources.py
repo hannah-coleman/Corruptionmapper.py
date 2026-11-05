@@ -6,7 +6,7 @@ import sqlite3
 from pathlib import Path
 
 from evidence_store import load_evidence_records
-from index_evidence import extract_html_text, extract_pdf_pages
+from index_evidence import IMAGE_TYPES, OFFICE_TYPES, extract_html_text, extract_office_pages, extract_image_pages, extract_pdf_pages
 
 TEXT_SUFFIXES = {".txt", ".md", ".csv"}
 
@@ -23,11 +23,21 @@ def pages_for_file(path: Path, content_type: str = "") -> list[str]:
         if not any(pages):
             raise ValueError("No extractable text in this PDF. It may be a scanned image, which needs OCR.")
         return pages
+    if suffix in IMAGE_TYPES or content_type in set(IMAGE_TYPES.values()):
+        pages = extract_image_pages(path)
+        if not any(pages):
+            raise ValueError("No text could be read from this image. OCR needs macOS; otherwise transcribe it by hand.")
+        return pages
+    if suffix in OFFICE_TYPES or content_type in set(OFFICE_TYPES.values()):
+        pages = extract_office_pages(path)
+        if not any(pages):
+            raise ValueError("No text could be read from this Word or Excel file.")
+        return pages
     if suffix in {".html", ".htm"} or content_type == "text/html":
         return [extract_html_text(path)]
     if suffix in TEXT_SUFFIXES:
         return [" ".join(path.read_text(encoding="utf-8", errors="replace").split())]
-    raise ValueError("Unsupported file type. Use PDF, HTML, or plain text.")
+    raise ValueError("Unsupported file type. Use PDF, image, Word (.docx), Excel (.xlsx), HTML, or plain text.")
 
 
 def _verified(path: Path, expected_sha256: str) -> None:

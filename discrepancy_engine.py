@@ -134,7 +134,9 @@ def build_flags(facts: list[dict]) -> list[dict]:
                 if flag_id in flags:
                     continue
                 reviewed = sum(fact["status"] == "confirmed" for fact in (a, b))
-                same_document = a["source"]["sha256"] == b["source"]["sha256"]
+                same_document = a["source"]["sha256"] == b["source"]["sha256"] or a["source"]["ref"].split("#")[0].rstrip("/") == b["source"]["ref"].split("#")[0].rstrip("/")
+                if same_document and link[0] != "reviewer-linked":
+                    continue  # list pages put unrelated dates and fees side by side; only a reviewer can link facts within one document
                 protection = max((a.get("protection", "restricted"), b.get("protection", "restricted")), key=lambda p: PROTECTION_RANK.get(p, 1))
                 flags[flag_id] = {
                     "id": flag_id, "type": "value-conflict", "kind": a["kind"],
@@ -171,11 +173,15 @@ def _write(path: Path | str, flags: list[dict]) -> None:
     target.write_text(json.dumps(flags, indent=2), encoding="utf-8")
 
 
-def scan(path: Path | str, facts: list[dict]) -> dict:
+def scan(path: Path | str, facts: list[dict], extra_flags: list[dict] | None = None) -> dict:
     """Merge fresh findings into the stored flags, preserving every human review."""
+    return merge_flags(path, build_flags(facts) + (extra_flags or []))
+
+
+def merge_flags(path: Path | str, fresh_flags: list[dict]) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     stored = {flag["id"]: flag for flag in load_flags(path)}
-    fresh = {flag["id"]: flag for flag in build_flags(facts)}
+    fresh = {flag["id"]: flag for flag in fresh_flags}
     added = 0
     for flag_id, flag in fresh.items():
         if flag_id not in stored:
@@ -183,7 +189,7 @@ def scan(path: Path | str, facts: list[dict]) -> dict:
             stored[flag_id] = flag
             added += 1
         elif stored[flag_id]["status"] in {"open", "stale"}:
-            stored[flag_id].update({key: flag[key] for key in ("vector", "tier", "facts", "difference", "message")})
+            stored[flag_id].update({key: flag[key] for key in ("vector", "tier", "facts", "difference", "message", "innocent_explanations", "next_action") if key in flag})
             stored[flag_id]["status"] = "open"
     stale = 0
     for flag_id, flag in stored.items():

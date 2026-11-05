@@ -5,6 +5,7 @@
 Karma AI is a fact-first investigative platform built around a shared evidence graph and modular extensions. It is not a single closed app; it is a platform with a common core and interchangeable chapters for specific investigative tasks.
 
 The design goal is simple:
+
 - one truth model
 - many tools
 - human review is required
@@ -40,7 +41,9 @@ The design goal is simple:
 ## Core system layers
 
 ### 1. Core database layer
+
 The core database holds all shared entities and evidence:
+
 - cases
 - persons
 - agencies
@@ -54,7 +57,9 @@ The core database holds all shared entities and evidence:
 - review history
 
 ### 2. Evidence and provenance layer
+
 This layer governs:
+
 - source URLs and files
 - capture timestamps
 - hashes
@@ -63,7 +68,9 @@ This layer governs:
 - what was observed versus what was inferred
 
 ### 3. Graph and relationship layer
+
 This layer links data across:
+
 - person-to-person
 - person-to-agency
 - agency-to-record
@@ -73,7 +80,9 @@ This layer links data across:
 - request-to-response
 
 ### 4. Workflow and review layer
+
 This layer supports:
+
 - intake
 - scope definition
 - record requests
@@ -83,7 +92,9 @@ This layer supports:
 - export and archive
 
 ### 5. AI collaborator layer
+
 Different specialists can operate as independent agents:
+
 - source verifier
 - entity matcher
 - anomaly detector
@@ -93,13 +104,16 @@ Different specialists can operate as independent agents:
 - fact-check reviewer
 
 ### 6. Extension layer
+
 Each chapter is a tool that uses the same core data model but focuses on a task.
 
 ## Recommended chapter model
 
 ### A. Local records chapter
+
 Purpose: map local government, county, and state public-record sources.
 Focus:
+
 - meeting agendas and minutes
 - contract files
 - budgets
@@ -108,8 +122,10 @@ Focus:
 - public notices
 
 ### B. FOIA and records-request chapter
+
 Purpose: turn questions into lawful requests and preserve responses.
 Focus:
+
 - agency routing
 - request drafting
 - deadlines
@@ -117,16 +133,20 @@ Focus:
 - denials and appeals
 
 ### C. Cold case chapter
+
 Purpose: maintain historical and unresolved cases with searchable cross-reference intelligence.
 Focus:
+
 - case timelines
 - witness links
 - public records trails
 - unresolved inconsistencies
 
 ### D. Law enforcement review chapter
+
 Purpose: review public-facing records, personnel-related public disclosures, and audit-relevant patterns.
 Focus:
+
 - agency records
 - public complaints
 - discipline history
@@ -134,16 +154,20 @@ Focus:
 - public documentation only
 
 ### E. Ethics and oversight chapter
+
 Purpose: compile patterns in campaign finance, governance, and regulatory compliance signals.
 Focus:
+
 - disclosures
 - ethics filings
 - audit findings
 - procurement irregularities
 
 ### F. Anomaly detection chapter
+
 Purpose: identify recurring patterns across documents, sources, and entities.
 Focus:
+
 - shared addresses
 - repeated vendors
 - missing payment trails
@@ -151,8 +175,10 @@ Focus:
 - timeline inconsistencies
 
 ### G. Reporting and evidence export chapter
+
 Purpose: present fact-based summaries and evidence bundles.
 Focus:
+
 - review-ready reports
 - timelines
 - evidence indexes
@@ -162,6 +188,7 @@ Focus:
 ## Shared infrastructure standards
 
 Every chapter should follow these rules:
+
 - source-backed claims only
 - labels for fact/inference/lead
 - support for local, public, or restricted records
@@ -172,6 +199,7 @@ Every chapter should follow these rules:
 ## Core design recommendation
 
 Build the first version as:
+
 - one shared core database
 - one local web dashboard
 - modular extension folders
@@ -183,6 +211,7 @@ This keeps the system flexible while preserving the fact-first operating model.
 ## Long-term aspiration
 
 Karma AI should become a local intelligence framework that supports:
+
 - public-record review
 - cold-case analysis
 - oversight mapping

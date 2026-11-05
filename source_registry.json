@@ -1,15 +1,293 @@
 [
-  {"id":"paragould-government","label":"City of Paragould government","category":"government","jurisdiction":"local","access":"public-search","discovery":"Official city website, clerk, council, finance, procurement, boards, permits, and public notices","request_route":"City records custodian / clerk","status":"verify-official-url","hosts":["www.paragouldcityar.gov"]},
-  {"id":"greene-county-government","label":"Greene County government","category":"government","jurisdiction":"local","access":"public-search","discovery":"Official county website, Quorum Court, clerk, assessor, treasurer, budgets, bids, and notices","request_route":"County records custodian / clerk","status":"verify-official-url","hosts":["greenecounty.arkansas.gov"]},
-  {"id":"greene-sheriff","label":"Greene County Sheriff","category":"law-enforcement","jurisdiction":"local","access":"mixed","discovery":"Official policies, releases, jail information, public logs, and complaint process","request_route":"Sheriff records custodian; counsel if the agency is subject","status":"verify-official-url"},
-  {"id":"paragould-police","label":"Paragould Police Department","category":"law-enforcement","jurisdiction":"local","access":"mixed","discovery":"Official policies, releases, complaint process, and records information","request_route":"Police records custodian; counsel if the agency is subject","status":"verify-official-url","hosts":["www.paragouldpolice.org"]},
-  {"id":"arkansas-sos","label":"Arkansas Secretary of State business records","category":"business","jurisdiction":"state","access":"public-search","discovery":"Entity formation, officers, agents, amendments, assumed names, and status","request_route":"Secretary of State records process","status":"verify-official-url","hosts":["www.sos.arkansas.gov"]},
-  {"id":"arkansas-courtconnect","label":"Arkansas CourtConnect","category":"judicial","jurisdiction":"state","access":"public-search","discovery":"Case metadata, docket events, permitted filings, orders, judgments, and appeals","request_route":"Court clerk process; counsel for restricted or sealed records","status":"verify-official-url","hosts":["caseinfo.arcourts.gov"]},
-  {"id":"arkansas-ethics","label":"Arkansas ethics and campaign records","category":"political","jurisdiction":"state","access":"public-search","discovery":"Campaign finance, disclosures, committees, lobbying, and ethics information","request_route":"Applicable state ethics or election records custodian","status":"verify-official-url","hosts":["www.arkansasethics.com"]},
-  {"id":"arkansas-audit","label":"Arkansas audit and oversight records","category":"oversight","jurisdiction":"state","access":"public-search","discovery":"Audits, compliance findings, legislative oversight, licensing, and accreditation","request_route":"Issuing oversight body or records custodian","status":"verify-official-url","hosts":["www.arklegaudit.gov"]},
-  {"id":"arkansas-transparency","label":"Arkansas state financial transparency portal","category":"oversight","jurisdiction":"state","access":"public-search","discovery":"State vendor payments, contracts, and agency spending published by the state","request_route":"Department of Finance and Administration records custodian","status":"verify-official-url","hosts":["transparency.arkansas.gov"]},
-  {"id":"arkansas-ag","label":"Arkansas Attorney General","category":"oversight","jurisdiction":"state","access":"public-search","discovery":"Published FOIA opinions, consumer and public-integrity notices","request_route":"Attorney General records custodian","status":"verify-official-url","hosts":["arkansasag.gov"]},
-  {"id":"public-social","label":"Public social and video sources","category":"communications","jurisdiction":"mixed","access":"permitted-public-only","discovery":"Individually selected public posts, official accounts, public comments, and public videos","request_route":"Platform reporting or records process only where applicable","status":"terms-review-required"},
-  {"id":"federal-agencies","label":"Federal agency records","category":"federal","jurisdiction":"federal","access":"public-search-or-foia","discovery":"Agency reading rooms, inspector general reports, grants, contracts, and enforcement releases","request_route":"Specific federal agency FOIA office","status":"agency-specific"},
-  {"id":"medical-child-sensitive","label":"Medical and child-welfare material","category":"restricted","jurisdiction":"mixed","access":"restricted","discovery":"Public policies, aggregate reports, audits, and authorized records only","request_route":"Counsel, authorized custodian, or formal legal process","status":"do-not-bulk-collect"}
+  {
+    "id": "paragould-government",
+    "label": "City of Paragould government",
+    "category": "government",
+    "jurisdiction": "local",
+    "access": "public-search",
+    "discovery": "Official city website, clerk, council, finance, procurement, boards, permits, and public notices",
+    "request_route": "City records custodian / clerk",
+    "status": "verify-official-url",
+    "hosts": [
+      "www.paragouldcityar.gov"
+    ]
+  },
+  {
+    "id": "greene-county-government",
+    "label": "Greene County government",
+    "category": "government",
+    "jurisdiction": "local",
+    "access": "public-search",
+    "discovery": "Official county website, Quorum Court, clerk, assessor, treasurer, budgets, bids, and notices",
+    "request_route": "County records custodian / clerk",
+    "status": "verify-official-url",
+    "hosts": [
+      "greenecounty.arkansas.gov"
+    ],
+    "access_method": "collector-with-delay",
+    "access_note": "robots.txt requests Crawl-Delay 10; the collector now honors it."
+  },
+  {
+    "id": "greene-sheriff",
+    "label": "Greene County Sheriff",
+    "category": "law-enforcement",
+    "jurisdiction": "local",
+    "access": "mixed",
+    "discovery": "Official policies, releases, jail information, public logs, and complaint process",
+    "request_route": "Sheriff records custodian; counsel if the agency is subject",
+    "status": "verify-official-url"
+  },
+  {
+    "id": "paragould-police",
+    "label": "Paragould Police Department",
+    "category": "law-enforcement",
+    "jurisdiction": "local",
+    "access": "mixed",
+    "discovery": "Official policies, releases, complaint process, and records information",
+    "request_route": "Police records custodian; counsel if the agency is subject",
+    "status": "verify-official-url",
+    "hosts": [
+      "www.paragouldpolice.org"
+    ]
+  },
+  {
+    "id": "arkansas-sos",
+    "label": "Arkansas Secretary of State business records",
+    "category": "business",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Entity formation, officers, agents, amendments, assumed names, and status",
+    "request_route": "Secretary of State records process",
+    "status": "verify-official-url",
+    "hosts": [
+      "www.sos.arkansas.gov"
+    ],
+    "access_method": "manual-or-request",
+    "access_note": "Automated requests return HTTP 403 (checked 2026-11-05). Do not automate or evade; search by hand and save the page, or request records."
+  },
+  {
+    "id": "arkansas-courtconnect",
+    "label": "Arkansas CourtConnect",
+    "category": "judicial",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Case metadata, docket events, permitted filings, orders, judgments, and appeals",
+    "request_route": "Court clerk process; counsel for restricted or sealed records",
+    "status": "verify-official-url",
+    "hosts": [
+      "caseinfo.arcourts.gov"
+    ],
+    "access_method": "manual-only",
+    "access_note": "Site disclaimer says the data is informational, not an official record, and restricts commercial and bulk use. Look up cases by hand; confirm with the clerk."
+  },
+  {
+    "id": "arkansas-ethics",
+    "label": "Arkansas ethics and campaign records",
+    "category": "political",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Campaign finance, disclosures, committees, lobbying, and ethics information",
+    "request_route": "Applicable state ethics or election records custodian",
+    "status": "verify-official-url",
+    "hosts": [
+      "www.arkansasethics.com"
+    ],
+    "access_method": "manual-or-collector",
+    "access_note": "robots.txt allows general crawling (checked 2026-11-05) but filings are served by search forms; save result pages by hand or collect specific page URLs."
+  },
+  {
+    "id": "arkansas-audit",
+    "label": "Arkansas audit and oversight records",
+    "category": "oversight",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Audits, compliance findings, legislative oversight, licensing, and accreditation",
+    "request_route": "Issuing oversight body or records custodian",
+    "status": "verify-official-url",
+    "hosts": [
+      "www.arklegaudit.gov"
+    ]
+  },
+  {
+    "id": "arkansas-transparency",
+    "label": "Arkansas state financial transparency portal",
+    "category": "oversight",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "State vendor payments, contracts, and agency spending published by the state",
+    "request_route": "Department of Finance and Administration records custodian",
+    "status": "verify-official-url",
+    "hosts": [
+      "transparency.arkansas.gov"
+    ],
+    "access_method": "manual-or-download",
+    "access_note": "robots.txt disallows /search.php and /ajax.php (checked 2026-11-05); do not automate those. Use the site's own export or download features by hand."
+  },
+  {
+    "id": "arkansas-ag",
+    "label": "Arkansas Attorney General",
+    "category": "oversight",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Published FOIA opinions, consumer and public-integrity notices",
+    "request_route": "Attorney General records custodian",
+    "status": "verify-official-url",
+    "hosts": [
+      "arkansasag.gov"
+    ]
+  },
+  {
+    "id": "arkansas-legislature",
+    "label": "Arkansas General Assembly",
+    "category": "political",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Bills, acts, committee meetings, and legislator information published by the legislature",
+    "request_route": "Bureau of Legislative Research",
+    "status": "verified-live-2026-11-03",
+    "hosts": [
+      "www.arkleg.state.ar.us"
+    ]
+  },
+  {
+    "id": "arkansas-dfa",
+    "label": "Arkansas Department of Finance and Administration",
+    "category": "oversight",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "State budget, procurement, and revenue publications",
+    "request_route": "DFA records custodian",
+    "status": "verified-live-2026-11-03",
+    "hosts": [
+      "www.dfa.arkansas.gov"
+    ]
+  },
+  {
+    "id": "arkansas-courts-admin",
+    "label": "Arkansas Judiciary administration",
+    "category": "judicial",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Published court rules, administrative orders, and judicial reports (not case files)",
+    "request_route": "Administrative Office of the Courts",
+    "status": "verified-live-2026-11-03",
+    "hosts": [
+      "arcourts.gov"
+    ]
+  },
+  {
+    "id": "usaspending-api",
+    "label": "USAspending federal awards API",
+    "category": "federal",
+    "jurisdiction": "federal",
+    "access": "open-api",
+    "discovery": "Federal contracts, grants and payments with Greene County, AR as place of performance",
+    "request_route": "Awarding federal agency FOIA office",
+    "status": "verified-live-2026-11-03",
+    "api_hosts": [
+      "api.usaspending.gov"
+    ],
+    "legal_basis": "Public Treasury open-data API, no login or key"
+  },
+  {
+    "id": "propublica-nonprofits",
+    "label": "ProPublica Nonprofit Explorer API",
+    "category": "nonprofit",
+    "jurisdiction": "federal",
+    "access": "open-api",
+    "discovery": "IRS Form 990 data for Paragould-area nonprofits: revenue, expenses, officer pay",
+    "request_route": "IRS / the nonprofit (Form 990 is public)",
+    "status": "verified-live-2026-11-03",
+    "api_hosts": [
+      "projects.propublica.org"
+    ],
+    "legal_basis": "Republishes public IRS data; attribute ProPublica when quoting"
+  },
+  {
+    "id": "fec-api",
+    "label": "FEC campaign-finance API",
+    "category": "political",
+    "jurisdiction": "federal",
+    "access": "open-api-key",
+    "discovery": "Federal campaign contributions from Paragould, AR donors",
+    "request_route": "Federal Election Commission",
+    "status": "requires-free-api-key",
+    "api_hosts": [
+      "api.open.fec.gov"
+    ],
+    "legal_basis": "Public FEC API; set FEC_API_KEY (free from api.data.gov)"
+  },
+  {
+    "id": "arkansas-digital-archives",
+    "label": "Arkansas State Archives Digital Archives",
+    "category": "historical-archives",
+    "jurisdiction": "state",
+    "access": "open-api",
+    "discovery": "Searches public CONTENTdm collections, including newspapers, government and county records, manuscripts, maps, images, and ephemera",
+    "request_route": "Arkansas State Archives research and reproduction request process",
+    "status": "connected-all-public-digital-collections",
+    "api_hosts": [
+      "ar-digital.contentdm.oclc.org"
+    ],
+    "legal_basis": "Public Arkansas State Archives CONTENTdm API and catalog text",
+    "coverage_limit": "Only indexed, digitized records in the public Digital Archives; separate library/microfilm catalogs and non-digitized records are not searched"
+  },
+  {
+    "id": "loc-chronicling-america",
+    "label": "Library of Congress Chronicling America",
+    "category": "historical-newspapers",
+    "jurisdiction": "federal",
+    "access": "open-api",
+    "discovery": "Full-text search of digitized U.S. newspaper pages and OCR, including mentions of Arkansas places and people",
+    "request_route": "Library of Congress JSON API",
+    "status": "connected-us-newspaper-search",
+    "api_hosts": [
+      "www.loc.gov"
+    ],
+    "legal_basis": "Public Library of Congress JSON API and digitized newspaper OCR",
+    "coverage_limit": "Searches digitized titles across the U.S.; not all newspapers or archival collections, and results may mention places outside Arkansas"
+  },
+  {
+    "id": "public-social",
+    "label": "Public social and video sources",
+    "category": "communications",
+    "jurisdiction": "mixed",
+    "access": "permitted-public-only",
+    "discovery": "Individually selected public posts, official accounts, public comments, and public videos",
+    "request_route": "Platform reporting or records process only where applicable",
+    "status": "terms-review-required"
+  },
+  {
+    "id": "federal-agencies",
+    "label": "Federal agency records",
+    "category": "federal",
+    "jurisdiction": "federal",
+    "access": "public-search-or-foia",
+    "discovery": "Agency reading rooms, inspector general reports, grants, contracts, and enforcement releases",
+    "request_route": "Specific federal agency FOIA office",
+    "status": "agency-specific"
+  },
+  {
+    "id": "medical-child-sensitive",
+    "label": "Medical and child-welfare material",
+    "category": "restricted",
+    "jurisdiction": "mixed",
+    "access": "restricted",
+    "discovery": "Public policies, aggregate reports, audits, and authorized records only",
+    "request_route": "Counsel, authorized custodian, or formal legal process",
+    "status": "do-not-bulk-collect"
+  },
+  {
+    "id": "arkansas-clest",
+    "label": "Arkansas Commission on Law Enforcement Standards and Training (CLEST)",
+    "category": "oversight",
+    "jurisdiction": "state",
+    "access": "public-search",
+    "discovery": "Officer certification standards, commission meeting agendas/minutes and published rules",
+    "request_route": "CLEST records custodian under the Arkansas FOIA; certification/discipline status requests",
+    "status": "verified-live-2026-11-03",
+    "hosts": [
+      "dps.arkansas.gov"
+    ]
+  }
 ]

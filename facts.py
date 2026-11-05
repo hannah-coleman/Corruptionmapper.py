@@ -126,8 +126,13 @@ def _write(path: Path | str, facts: list[dict]) -> None:
 def save_proposed(path: Path | str, new_facts: list[dict]) -> dict:
     existing = load_facts(path)
     known = {fact["id"] for fact in existing}
-    added = [fact for fact in new_facts if fact["id"] not in known]
-    _write(path, existing + added)
+    added = []
+    for fact in new_facts:
+        if fact["id"] not in known:
+            known.add(fact["id"])
+            added.append(fact)
+    if added:
+        _write(path, existing + added)
     return {"added": len(added), "already_present": len(new_facts) - len(added), "truncated": len(new_facts) >= MAX_FACTS_PER_DOCUMENT}
 
 

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Place map</title>
+<link rel="stylesheet" href="/style-professional.css">
+<style>
+ body{font-family:system-ui,sans-serif;margin:0;padding:1rem;max-width:1100px;margin:auto}
+ svg{width:100%;height:520px;border:1px solid #888;background:#f6f6f2}
+ .pin{cursor:pointer;stroke:#222;stroke-width:1}
+ fieldset{margin:1rem 0} label{display:block;margin:.3rem 0} input,select,textarea{width:100%;max-width:520px}
+ .note{background:#fff7d6;padding:.6rem;border:1px solid #d9c36a} #detail{border:1px solid #888;padding:.6rem;min-height:4rem}
+ li.link{margin:.3rem 0}
+</style>
+</head>
+<body>
+<h1>Place map</h1>
+<p class="note">Shows what the records you saved say. A shared owner, agent or address is a lead to check, not proof of any relationship. Every place must cite its source. Nothing here is sent to an outside map service.</p>
+<svg id="map" role="img" aria-label="Map of saved places"></svg>
+<div id="legend"></div>
+<h2>Selected place</h2>
+<div id="detail">Click a pin.</div>
+<h2>Shared filed identifiers</h2>
+<ul id="links"></ul>
+<h2>Places with no coordinates</h2>
+<ul id="unplaced"></ul>
+<fieldset><legend>Add a place</legend>
+<form id="add">
+<label>Name or address *<input name="name" required></label>
+<label>Kind<select name="kind"><option>property</option><option>business</option><option>church</option><option>government</option><option>nonprofit</option><option>other</option></select></label>
+<label>Parcel ID<input name="parcel_id"></label>
+<label>Owner of record<input name="owner"></label>
+<label>Registered agent<input name="agent"></label>
+<label>Entity ID<input name="entity_id"></label>
+<label>Mailing address<input name="mailing_address"></label>
+<label>Latitude<input name="lat" inputmode="decimal"></label>
+<label>Longitude<input name="lon" inputmode="decimal"></label>
+<label>Source (saved record URL, file, or filing number) *<input name="source" required></label>
+<label>Source date<input name="source_date" type="date"></label>
+<label>Note<textarea name="note"></textarea></label>
+<button>Add place</button> <span id="addmsg" role="status"></span>
+</form></fieldset>
+<fieldset><legend>Import CSV</legend>
+<p>Columns: name, kind, parcel_id, owner, agent, entity_id, mailing_address, lat, lon, source, source_date, note. Name and source are required.</p>
+<input type="file" id="csv" accept=".csv,text/csv"> <span id="csvmsg" role="status"></span></fieldset>
+<script src="/map.js"></script>
+</body>
+</html>

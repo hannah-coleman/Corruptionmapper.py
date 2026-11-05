@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from email.parser import BytesParser
@@ -25,14 +26,14 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
     targets: Path = Path("targets.txt")
     # Protection levels this server may expose; evidence labeled otherwise (or unlabeled) is withheld.
     visible_levels = web_security.PUBLIC_LEVELS
-    public_files = {"/", "/index.html", "/app-professional.js", "/style.css", "/style-professional.css"}
+    public_files = {"/", "/index.html", "/app-professional.js", "/style.css", "/style-professional.css", "/map.html", "/map.js", "/start.html", "/start.js", "/layoffs.html", "/layoffs.js"}
 
     def do_GET(self) -> None:
         route = urlparse(self.path).path
         if not web_security.host_allowed(self.headers.get("Host"), self.port):
             self.send_error(403, "Unexpected Host header")
             return
-        if route in self.public_files and route.endswith(('.js', '.css')):
+        if route in self.public_files:
             self.serve_static_file(route)
             return
         if route.startswith("/api/"):
@@ -44,11 +45,16 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def serve_static_file(self, route: str) -> None:
-        file_path = Path(route.lstrip('/'))
+        filename = "index.html" if route == "/" else route.lstrip("/")
+        file_path = Path(__file__).resolve().parent / filename
         if not file_path.exists() or not file_path.is_file():
             self.send_error(404, "Not found")
             return
-        mime_type = "text/javascript" if route.endswith('.js') else "text/css"
+        mime_type = {
+            ".html": "text/html",
+            ".js": "text/javascript",
+            ".css": "text/css",
+        }.get(file_path.suffix, "application/octet-stream")
         try:
             content = file_path.read_bytes()
             self.send_response(200)
@@ -88,11 +94,35 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         if route == "/api/collect-approved":
             self.collect_approved_sources()
             return
+        if route == "/api/autopopulate":
+            self.send_json({"status": "ok", "summary": self.run_autopopulate()})
+            return
+        if route == "/api/historical-archive-search":
+            self.search_historical_archives()
+            return
         if route == "/api/evidence":
             self.save_evidence_record()
             return
         if route == "/api/evidence-upload":
             self.save_uploaded_evidence()
+            return
+        if route == "/api/statements":
+            try:
+                from public_statements import save_statement
+                record = save_statement(Path("evidence/statements.json"), self.read_json_object())
+            except ValueError as error:
+                self.send_json({"error": str(error)}, 400)
+                return
+            self.send_json({"status": "ok", "record": record})
+            return
+        if route == "/api/references":
+            try:
+                from reference_register import save_reference
+                record = save_reference(Path("evidence/references.json"), self.read_json_object())
+            except ValueError as error:
+                self.send_json({"error": str(error)}, 400)
+                return
+            self.send_json({"status": "ok", "record": record})
             return
         if route == "/api/claims":
             self.save_claim_record()
@@ -111,6 +141,44 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             return
         if route.startswith("/api/claims/") and route.endswith("/review"):
             self.review_claim_record(route)
+            return
+        if route.startswith("/api/discrepancies/") and route.endswith("/verify"):
+            self.verify_lead(route)
+            return
+        if route == "/api/places" or route == "/api/places/import":
+            try:
+                import property_map
+                payload = self.read_json_object()
+                if route == "/api/places":
+                    result = {"status": "ok", "record": property_map.add_place(Path("evidence/places.json"), payload)}
+                else:
+                    result = {"status": "ok", **property_map.import_csv(Path("evidence/places.json"), str(payload.get("csv", "")))}
+            except ValueError as error:
+                self.send_json({"error": str(error)}, 400)
+                return
+            self.send_json(result)
+            return
+        if route in {"/api/layoffs", "/api/layoffs/import"}:
+            try:
+                import layoffs
+                payload = self.read_json_object()
+                table = str(payload.pop("table", ""))
+                if route == "/api/layoffs":
+                    result = {"status": "ok", "record": layoffs.add(Path("evidence/layoffs.json"), table, payload)}
+                else:
+                    result = {"status": "ok", **layoffs.import_csv(Path("evidence/layoffs.json"), table, str(payload.get("csv", "")))}
+            except ValueError as error:
+                self.send_json({"error": str(error)}, 400)
+                return
+            self.send_json(result)
+            return
+        if route == "/api/jobs/refresh":
+            import jobs
+            self.send_json({"status": "ok", "job": jobs.submit("refresh", lambda: jobs.run_pipeline(Path("evidence")))})
+            return
+        if route == "/api/lead-packet":
+            from lead_packet import write_packet
+            self.send_json({"status": "ok", "path": str(write_packet(Path("evidence")))})
             return
         if route == "/api/facts/extract":
             self.extract_facts_from_source()
@@ -178,16 +246,48 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         append_entry(Path("evidence/audit.jsonl"), "fact-entered", fact["id"], {"kind": fact["kind"], "reviewer": fact["reviewer"], "protection": protection})
         self.send_json({"status": "ok", "record": fact})
 
+    def verify_lead(self, route: str) -> None:
+        try:
+            payload = self.read_json_object()
+            from verification import verify_flag
+
+            flag_id = route.removeprefix("/api/discrepancies/").removesuffix("/verify")
+            flag = verify_flag(Path("evidence/discrepancy-flags.json"), flag_id, payload)
+        except ValueError as error:
+            self.send_json({"error": str(error)}, 400)
+            return
+        from audit_log import append_entry
+        check = flag["verifications"][-1]
+        append_entry(Path("evidence/audit.jsonl"), "lead-verified", flag_id, {"reviewer": check["reviewer"], "method": check["method"], "result": check["result"]})
+        self.send_json({"status": "ok", "record": flag})
+
     def review_fact_record(self, route: str) -> None:
         try:
             payload = self.read_json_object()
-            engine = ReviewEngine(Path("evidence/claims.json"), Path("evidence/records.json"), Path("evidence/audit.jsonl"))
+            from facts import review_fact
+
             fact_id = route.removeprefix("/api/facts/").removesuffix("/review")
-            fact = engine.review_fact(fact_id, payload["reviewer"], payload["disposition"], payload["rationale"], payload["next_action"])
-        except (ValueError, KeyError) as error:
+            fact = review_fact(Path("evidence/facts.json"), fact_id, payload)
+        except ValueError as error:
             self.send_json({"error": str(error)}, 400)
             return
+        from audit_log import append_entry
+        append_entry(Path("evidence/audit.jsonl"), "fact-reviewed", fact_id, {
+            "reviewer": fact["reviewer"],
+            "disposition": fact["status"],
+        })
         self.send_json({"status": "ok", "record": fact})
+
+    def document_count(self) -> int:
+        if not self.search_database.exists():
+            return 0
+        connection = sqlite3.connect(self.search_database)
+        try:
+            return connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        except sqlite3.Error:
+            return 0
+        finally:
+            connection.close()
 
     def captured_documents(self) -> list[dict]:
         if not self.search_database.exists():
@@ -221,6 +321,12 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             vis_sql, vis_params = self.sql_visibility()
             if route == "/api/health":
                 payload = {"status": "ok", "database": str(self.database)}
+            elif route == "/api/case":
+                row = connection.execute("SELECT id, title, created_at FROM cases ORDER BY id LIMIT 1").fetchone()
+                if row is None:
+                    self.send_json({"error": "No case found"}, 404)
+                    return
+                payload = dict(row)
             elif route == "/api/source-catalog":
                 payload = json.loads(self.registry.read_text(encoding="utf-8")) if self.registry.exists() else []
             elif route == "/api/search":
@@ -236,10 +342,16 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                         "UNION ALL SELECT id, message, 'discrepancy', message, kind, severity FROM discrepancies WHERE message LIKE ? ORDER by result_type, title",
                         (pattern, pattern, *vis_params, pattern, pattern, *vis_params, pattern, *vis_params, pattern))]
             elif route == "/api/search-text":
-                telif route == "/api/search-text":
                 term = query.get("q", [""])[0].strip()
                 agency = query.get("agency", [""])[0].strip()
                 kind = query.get("kind", [""])[0].strip().lower()
+                question_mode = query.get("mode", [""])[0] == "question"
+                if question_mode and (len(term) < 3 or len(term) > 400):
+                    self.send_json({"error": "Question must be between 3 and 400 characters."}, 400)
+                    return
+                if question_mode and not self.search_database.exists():
+                    self.send_json({"error": "No captured-page search index is available. Index the collected pages first."}, 503)
+                    return
                 payload = []
                 if term and self.search_database.exists():
                     registry = json.loads(self.registry.read_text(encoding="utf-8")) if self.registry.exists() else []
@@ -247,7 +359,8 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                     if agency and not hosts:
                         self.send_json({"error": "Unknown agency."}, 400)
                         return
-                    filters, params = [], [f'"{term.replace("\"", "\"\"")}"']
+                    fts_term = '"' + term.replace('"', '""') + '"'
+                    filters, params = [], [fts_term]
                     if hosts:
                         filters.append("(" + " OR ".join("url LIKE ?" for _ in hosts) + ")")
                         params += [f"%://{host}/%" for host in hosts]
@@ -258,18 +371,92 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                     search_connection = sqlite3.connect(self.search_database)
                     search_connection.row_factory = sqlite3.Row
                     try:
-                        payload = [dict(row) for row in search_connection.execute(
-                            "SELECT url, title, content_type, captured_at, raw_file, sha256, snippet(documents, 2, '<mark>', '</mark>', '...', 24) AS excerpt "
-                            f"FROM documents WHERE documents MATCH ?{where} ORDER BY rank LIMIT 50", params)]
-                    except sqlite3.Error:
+                        search_sql = (
+                            "SELECT url, title, content_type, captured_at, raw_file, sha256, "
+                            "snippet(documents, 2, '<mark>', '</mark>', '...', 24) AS excerpt "
+                            f"FROM documents WHERE documents MATCH ?{where} ORDER BY rank LIMIT 50"
+                        )
+                        if question_mode:
+                            stop_words = {"about", "after", "and", "are", "for", "from", "how", "into", "is", "it",
+                                          "that", "the", "this", "was", "what", "when", "where", "which", "who", "why", "with"}
+                            terms = list(dict.fromkeys(re.findall(r"[a-z0-9]{2,}", term.lower())))
+                            terms = [word for word in terms if word not in stop_words] or terms
+                            if not terms:
+                                self.send_json({"error": "Question needs searchable words."}, 400)
+                                return
+                            and_query = " AND ".join(f'"{word}"' for word in terms)
+                            payload = [dict(row) for row in search_connection.execute(search_sql, [and_query, *params[1:]])]
+                            if not payload and len(terms) > 1:
+                                or_query = " OR ".join(f'"{word}"' for word in terms)
+                                payload = [dict(row) for row in search_connection.execute(search_sql, [or_query, *params[1:]])]
+                        else:
+                            payload = [dict(row) for row in search_connection.execute(search_sql, params)]
+                    except sqlite3.Error as error:
+                        self.log_error(f"Text search failed: {error}")
+                        if question_mode:
+                            self.send_json({"error": "Question search failed. Try again or narrow your question."}, 500)
+                            return
                         payload = []
                     finally:
                         search_connection.close()
-                payload = dict(row) if row else {"error": "No case found"}
             elif route == "/api/discrepancies":
                 payload = [dict(row) for row in connection.execute(
                     "SELECT id, kind, severity, message, disposition, recommended_desks_json, routing_rationale, next_action FROM discrepancies ORDER BY severity DESC, id"
                 )]
+                from discrepancy_engine import load_flags
+                from verification import verification_level
+                severity_by_tier = {1: "high", 2: "medium", 3: "low"}
+                labels = {"vote-tally": "Roll call vs. announced vote", "not-recorded-present": "Voter not recorded present",
+                          "instrument-duplicate": "Duplicate resolution/ordinance number", "instrument-gap": "Missing resolution/ordinance numbers",
+                          "statement-amount": "Public statement: figure not in records", "statement-instrument": "Public statement: measure not in records",
+                          "agenda-only": "On the agenda, not in the minutes", "no-minutes": "Agenda with no minutes",
+                          "date": "Dates differ between sources", "amount": "Amounts differ between sources"}
+                payload += [{
+                    "id": flag["id"], "kind": labels.get(flag.get("kind"), "Possible conflict"),
+                    "severity": severity_by_tier.get(flag.get("tier"), "low"), "tier": flag.get("tier"),
+                    "message": flag["message"], "disposition": flag["status"],
+                    "next_action": flag.get("next_action", ""), "lead": True,
+                    "meeting": (flag.get("link") or {}).get("detail", ""),
+                    "text_method": (flag.get("vector") or {}).get("text_method", "text-layer"),
+                    "verification": verification_level(flag),
+                    "explanations": flag.get("innocent_explanations", []),
+                    "evidence": [{"passage": fact.get("passage", ""), "url": (fact.get("source") or {}).get("ref", ""),
+                                  "title": (fact.get("source") or {}).get("title", "")} for fact in flag.get("facts", [])],
+                } for flag in self.visible_records(load_flags(Path("evidence/discrepancy-flags.json"))) if flag.get("status") == "open"]
+            elif route.startswith("/api/jobs/"):
+                import jobs
+                payload = jobs.get(route.removeprefix("/api/jobs/"))
+                if payload is None:
+                    self.send_json({"error": "Job not found."}, 404)
+                    return
+            elif route == "/api/layoffs":
+                import layoffs
+                payload = layoffs.report(Path("evidence/layoffs.json"))
+            elif route == "/api/home":
+                from verification import summary
+                from discrepancy_engine import load_flags
+                import property_map, layoffs
+                from request_queue import list_requests
+                reqs = list_requests(Path("evidence/request-queue.json"))
+                payload = {"verification": summary(load_flags(Path("evidence/discrepancy-flags.json"))),
+                           "requests": {s: sum(1 for r in reqs if r.get("status") == s) for s in {r.get("status", "draft") for r in reqs}},
+                           "places": len(property_map.load_places(Path("evidence/places.json"))),
+                           "layoff_flags": len(layoffs.report(Path("evidence/layoffs.json"))["flags"]),
+                           "documents": self.document_count(),
+                           "packet_built": Path("evidence/lead-packet.md").exists()}
+            elif route == "/api/places":
+                import property_map
+                payload = property_map.build_map(Path("evidence/places.json"))
+            elif route == "/api/report":
+                from network_report import build_report
+                payload = {"markdown": build_report(Path("evidence"))}
+            elif route == "/api/status":
+                from facts import load_facts
+                from evidence_store import load_evidence_records
+                payload = {
+                    "evidence_records": len(self.visible_records(load_evidence_records(Path("evidence/records.json")))),
+                    "facts": len(self.visible_records(load_facts(Path("evidence/facts.json")))),
+                }
             elif route == "/api/requests":
                 payload = [dict(row) for row in connection.execute(
                     "SELECT id, jurisdiction, custodian, description, status, submitted_at, deadline, response_at, denial_reason, counsel_review FROM requests ORDER BY id"
@@ -358,7 +545,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 payload = list_requests(Path("evidence/requests.json"))
             elif route == "/api/request-deadlines":
                 from request_queue import deadline_status, list_requests
-                payload = deadline_status(list_requests(Path("evidence/requests.json"), datetime.now(timezone.utc).date().isoformat()))
+                payload = deadline_status(list_requests(Path("evidence/requests.json")), datetime.now(timezone.utc).date().isoformat())
             elif route == "/api/sources":
                 payload = [dict(row) for row in connection.execute(
                     f"SELECT id, title, issuer_or_account, url, source_family, access_method, sensitivity, storage_zone, published_at, captured_at, type FROM sources WHERE {vis_sql} ORDER BY captured_at DESC, id",
@@ -394,6 +581,14 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         if not isinstance(urls, list) or not urls:
             self.send_json({"error": "No URLs provided."}, 400)
             return
+        approved_hosts = web_security.approved_hosts(self.targets, self.registry)
+        if not all(
+            web_security.url_in_scope(url, approved_hosts)
+            and web_security.is_public_address(urlparse(url).hostname or "")
+            for url in urls
+        ):
+            self.send_json({"error": "Only URLs within the approved public source scope may be collected."}, 400)
+            return
         output_dir = Path("evidence/raw")
         results = collect_urls(urls, output_dir, max_bytes=10_000_000, delay=0.0)
         from audit_log import append_entry
@@ -408,9 +603,42 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
             return
         urls = read_urls(targets_path)
         results = collect_urls(urls, Path("evidence/raw"), max_bytes=10_000_000, delay=1.0)
+        from open_data import collect_all
+        api_stats = collect_all(Path("evidence"))
         from audit_log import append_entry
-        append_entry(Path("evidence/audit.jsonl"), "collection-run", details={"source": "approved-targets", "targets": len(urls), "collected": sum(item.get("status") == "collected" for item in results)})
-        self.send_json({"status": "ok", "results": results})
+        append_entry(Path("evidence/audit.jsonl"), "collection-run", details={"source": "approved-targets", "targets": len(urls), "collected": sum(item.get("status") == "collected" for item in results), "api_new_captures": api_stats["new_captures"]})
+        self.send_json({"status": "ok", "results": results, "api": api_stats, "summary": self.run_autopopulate()})
+
+    def search_historical_archives(self) -> None:
+        try:
+            payload = self.read_json_object()
+            from historical_archives import search_archives
+            result = search_archives(
+                payload.get("query", ""),
+                Path("evidence"),
+                payload.get("start_date", ""),
+                payload.get("end_date", ""),
+                payload.get("max_results", 40),
+            )
+        except ValueError as error:
+            self.send_json({"error": str(error)}, 400)
+            return
+        if result["pages_preserved"]:
+            result["ingest"] = self.run_autopopulate()
+        from audit_log import append_entry
+        append_entry(Path("evidence/audit.jsonl"), "historical-archive-search", details={
+            "archives": [item["archive"] for item in result["archives"]],
+            "query": result["query"],
+            "pages_searched": sum(item["pages_searched"] for item in result["archives"]),
+            "pages_preserved": result["pages_preserved"],
+            "catalog_only": result["catalog_only"],
+            "errors": len(result["errors"]),
+        })
+        self.send_json({"status": "ok", "result": result})
+
+    def run_autopopulate(self) -> dict:
+        import jobs
+        return jobs.run_pipeline(Path("evidence"))
 
     def save_evidence_record(self) -> None:
         try:
@@ -446,11 +674,15 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 Path("evidence/records.json"), Path("evidence/uploads"), filename, content, metadata
             )
         except ValueError as error:
-            self.send_json({"error": "Invalid JSON body."}, 400)
+            self.send_json({"error": str(error) or "Could not read the upload."}, 400)
             return
         from audit_log import append_entry
         append_entry(Path("evidence/audit.jsonl"), "file-preserved", record["id"], {"sha256": record["sha256"], "size_bytes": record["size_bytes"], "protection": record["protection"]})
-        self.send_json({"status": "ok", "record": record})
+        import jobs
+        from user_records import register_for_indexing
+        indexing = register_for_indexing(Path("evidence"), record)
+        job = jobs.submit("refresh", lambda: jobs.run_pipeline(Path("evidence"))) if indexing["indexed"] else None
+        self.send_json({"status": "ok", "record": record, "indexing": indexing, "job": job})
 
     def save_claim_record(self) -> None:
         try:

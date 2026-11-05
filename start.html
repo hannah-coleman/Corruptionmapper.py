@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Corruption Mapper: Start</title>
+<style>
+ body{font-family:system-ui,sans-serif;max-width:1000px;margin:auto;padding:1rem}
+ .note{background:#fff7d6;padding:.6rem;border:1px solid #d9c36a}
+ .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.8rem;margin:1rem 0}
+ .card{border:1px solid #888;padding:.8rem;border-radius:6px} .card a{font-weight:600}
+ article{border:1px solid #aaa;padding:.6rem;margin:.6rem 0} label{display:block;margin:.3rem 0} select,input,textarea{width:100%;max-width:520px}
+ .tag{display:inline-block;padding:0 .4rem;border:1px solid #666;border-radius:3px;font-size:.85em}
+</style>
+</head>
+<body>
+<h1>Corruption Mapper</h1>
+<p class="note">Everything here is a lead drawn from public records, not a finding of wrongdoing. Your data stays on this computer. Verify every lead against the original record before relying on it, and get legal advice before sharing results.</p>
+<div id="ack" class="note" hidden>
+<strong>Before you start.</strong> This app reports where public records disagree. A discrepancy is a lead, not proof of wrongdoing or intent. Use only lawful public sources and follow each site's terms. Respect the privacy of private individuals. Check every lead against the original record, and get legal advice before sharing results. Your data stays on this computer.
+<p><button id="ackbtn">I understand</button></p></div>
+<h2>Getting started</h2>
+<ol id="steps"></ol>
+<h2>Where things stand</h2>
+<div id="status" class="grid"></div>
+<h2>Work through it</h2>
+<div class="grid">
+<div class="card"><strong>1. Collect</strong><p>Search archives, save pages, preserve files.</p><a href="/index.html">Open the full workspace</a></div>
+<div class="card"><strong>2. Map</strong><p>Properties, businesses and churches from your saved records.</p><a href="/map.html">Place map</a></div>
+<div class="card"><strong>3. Layoffs</strong><p>Log layoffs, postings and headcounts; see timing and count patterns.</p><a href="/layoffs.html">Layoff log</a></div>
+<div class="card"><strong>4. Verify</strong><p>Compare each lead with the original page (below).</p></div>
+<div class="card"><strong>5. Package</strong><p>Build a packet with sources, hashes and limits.</p><button id="packet">Build lead packet</button> <div id="packetmsg" role="status"></div></div>
+</div>
+<h2>Add your own record</h2>
+<form id="upload">
+<label>File (PDF, HTML or text; up to 25 MB) *<input type="file" name="file" required></label>
+<label>Title<input name="title"></label>
+<label>What it is<input name="summary" placeholder="e.g. 2025 council minutes from the city clerk"></label>
+<label><input type="checkbox" id="ispublic" style="width:auto"> This is a public record (minutes, filing, notice, press release). Public records are indexed and compared with everything else. Leave unchecked for anything private: it is saved with a hash and date but never indexed.</label>
+<button>Save record</button> <span id="uploadmsg" role="status"></span>
+</form>
+<p><button id="refresh">Re-index and re-compare everything</button> <span id="jobmsg" role="status"></span></p>
+<h2>Verify a lead</h2>
+<div id="leads">Loading...</div>
+<script src="/start.js"></script>
+</body>
+</html>

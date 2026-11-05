@@ -76,3 +76,17 @@ def test_fetch_robots_uses_rules_and_crawl_delay():
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_collect_urls_honors_site_crawl_delay(tmp_path, monkeypatch):
+    import collector
+    from urllib.robotparser import RobotFileParser
+
+    robots = RobotFileParser()
+    robots.parse(["User-agent: *", "Crawl-delay: 7"])
+    monkeypatch.setattr(collector, "fetch_robots", lambda url, allow_private_hosts=False: robots)
+    monkeypatch.setattr(collector, "collect", lambda *a, **k: {"status": "collected"})
+    sleeps = []
+    monkeypatch.setattr(collector.time, "sleep", sleeps.append)
+    collector.collect_urls(["https://a.example/1", "https://a.example/2"], tmp_path / "raw", delay=0.0)
+    assert len(sleeps) == 1 and 6.5 < sleeps[0] <= 7

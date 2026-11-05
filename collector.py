@@ -20,6 +20,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from web_security import is_public_address
 
+MAX_CRAWL_DELAY = 30.0  # a site-requested pause is honored up to this many seconds
 USER_AGENT = "SignalLedgerResearch/0.1 (+lawful-public-records; contact case-counsel)"
 
 
@@ -123,12 +124,21 @@ def collect_urls(urls: list[str], output_dir: Path, max_bytes: int = 10_000_000,
     manifest_path = output_dir.parent / "manifest.jsonl"
     results: list[dict[str, object]] = []
     with manifest_path.open("a", encoding="utf-8") as manifest:
+        last_request: dict[str, float] = {}
+        site_delay: dict[str, float] = {}
         for index, url in enumerate(urls):
+            host = urlparse(url).netloc
+            if host not in site_delay:
+                robots = fetch_robots(url, allow_private_hosts)
+                requested = robots.crawl_delay(USER_AGENT) if robots else None
+                site_delay[host] = min(float(requested), MAX_CRAWL_DELAY) if requested else 0.0
+            wait = max(delay, site_delay[host]) - (time.monotonic() - last_request.get(host, -1e9))
+            if wait > 0:
+                time.sleep(wait)
+            last_request[host] = time.monotonic()
             result = collect(url, output_dir, max_bytes, allow_private_hosts)
             results.append(result)
             manifest.write(json.dumps(result, sort_keys=True) + "\n")
-            if index < len(urls) - 1 and delay > 0:
-                time.sleep(delay)
     return results
 
 

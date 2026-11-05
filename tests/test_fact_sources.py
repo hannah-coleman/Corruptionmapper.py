@@ -44,9 +44,13 @@ def test_files_outside_uploads_are_refused(tmp_path):
 
 
 def test_unsupported_and_scanned_files_give_clear_errors(tmp_path):
-    image = tmp_path / "scan.png"
-    image.write_bytes(b"\x89PNG")
+    unsupported = tmp_path / "sheet.xls"
+    unsupported.write_bytes(b"PK")
     with pytest.raises(ValueError, match="Unsupported"):
+        pages_for_file(unsupported)
+    image = tmp_path / "blank.png"
+    image.write_bytes(b"\x89PNG not a real image")
+    with pytest.raises(ValueError, match="image"):
         pages_for_file(image)
     bad_pdf = tmp_path / "scan.pdf"
     bad_pdf.write_bytes(b"not text")

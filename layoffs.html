@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layoff log</title>
+<style>
+ body{font-family:system-ui,sans-serif;max-width:1000px;margin:auto;padding:1rem}
+ .note{background:#fff7d6;padding:.6rem;border:1px solid #d9c36a}
+ fieldset{margin:1rem 0} label{display:block;margin:.3rem 0} input,select,textarea{width:100%;max-width:520px}
+ article{border:1px solid #aaa;padding:.6rem;margin:.6rem 0} small{color:#555}
+</style>
+</head>
+<body>
+<p><a href="/start.html">&larr; Home</a></p>
+<h1>Layoff log and pattern checks</h1>
+<p class="note">Enter layoffs, job postings and payroll headcounts from records you saved (WARN notices, agency budgets, postings). The checks show timing and count patterns only. They cannot show who was chosen or why, and every flag lists ordinary explanations.</p>
+<h2>Patterns to check</h2>
+<div id="flags">Loading...</div>
+<fieldset><legend>Add</legend>
+<form id="add">
+<label>What are you adding?<select name="table" id="table"><option value="events">A layoff or closure</option><option value="postings">A job posting</option><option value="headcounts">A payroll headcount</option></select></label>
+<label>Employer *<input name="employer" required></label>
+<label data-for="events postings">Date (layoff or posting date) *<input name="date" type="date"></label>
+<label data-for="headcounts">Period end *<input name="period_end" type="date"></label>
+<label data-for="events">Jobs cut *<input name="count" inputmode="numeric"></label>
+<label data-for="events">Notice date<input name="notice_date" type="date"></label>
+<label data-for="events">Positions cut (separate with ;)<input name="positions"></label>
+<label data-for="events">Stated reason<input name="stated_reason"></label>
+<label data-for="postings">Job title *<input name="title"></label>
+<label data-for="headcounts">Headcount *<input name="headcount" inputmode="numeric"></label>
+<label>Source (saved record URL, file, or notice number) *<input name="source" required></label>
+<label>Note<textarea name="note"></textarea></label>
+<button>Add</button> <span id="msg" role="status"></span>
+</form></fieldset>
+<script src="/layoffs.js"></script>
+</body>
+</html>

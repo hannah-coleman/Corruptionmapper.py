@@ -65,9 +65,23 @@ def test_static_serving_is_limited_to_the_allowlist(running):
     port, tmp_path = running
     (tmp_path.parent / "outside-probe.js").write_text("// secret", encoding="utf-8")
     (tmp_path / "other.js").write_text("// not listed", encoding="utf-8")
+    status, page = request(port, "GET", "/")
+    assert status == 200 and b"Signal Ledger" in page
     assert request(port, "GET", "/../outside-probe.js")[0] == 404
     assert request(port, "GET", "/%2e%2e/outside-probe.js")[0] == 404
     assert request(port, "GET", "/other.js")[0] == 404
+
+
+def test_case_endpoint_feeds_ui_initialization(running):
+    port, _ = running
+    status, body = request(port, "GET", "/api/case")
+    assert status == 200 and json.loads(body)["title"] == "t"
+
+
+def test_request_deadlines_endpoint_responds(running):
+    port, _ = running
+    status, body = request(port, "GET", "/api/request-deadlines")
+    assert status == 200 and isinstance(json.loads(body), list)
 
 
 def test_unexpected_host_header_is_rejected(running):
@@ -80,6 +94,40 @@ def test_posts_require_csrf_header_and_same_origin(running):
     port, _ = running
     assert request(port, "POST", "/api/backup")[0] == 403
     assert request(port, "POST", "/api/backup", headers={"Origin": "http://evil.example", **TRUSTED})[0] == 403
+    assert request(port, "POST", "/api/historical-archive-search", body=b"{}", headers={"Content-Type": "application/json"})[0] == 403
+
+
+def test_archive_search_validates_payload_before_access(running):
+    port, _ = running
+    status, data = request(port, "POST", "/api/historical-archive-search",
+                           body=json.dumps({"query": "Paragould", "start_date": "2025-01-01", "end_date": "1900-01-01"}),
+                           headers=TRUSTED)
+    assert status == 400
+    assert "Start date must not be after end date" in json.loads(data)["error"]
+
+
+def test_archive_search_route_indexes_and_returns_archive_results(running, monkeypatch):
+    port, _ = running
+    expected = {
+        "query": "Paragould",
+        "archives": [
+            {"archive": "Arkansas State Archives Digital Archives", "pages_searched": 1},
+            {"archive": "Library of Congress, Chronicling America", "pages_searched": 1},
+        ],
+        "pages_preserved": 1,
+        "catalog_only": 0,
+        "errors": [],
+    }
+    indexed = {"indexed": 2, "facts_proposed": 1, "discrepancies": {"flags": 3, "added": 1}}
+    monkeypatch.setattr("historical_archives.search_archives", lambda *_args, **_kwargs: expected)
+    monkeypatch.setattr(server.SignalLedgerHandler, "run_autopopulate", lambda _self: indexed)
+    status, data = request(port, "POST", "/api/historical-archive-search",
+                           body=json.dumps({"query": "Paragould"}), headers=TRUSTED)
+
+    assert status == 200
+    payload = json.loads(data)["result"]
+    assert payload["archives"] == expected["archives"]
+    assert payload["ingest"] == indexed
 
 
 def test_oversized_json_body_is_rejected(running):
@@ -143,6 +191,8 @@ def test_text_search_filters_by_agency_and_kind(running, monkeypatch):
     assert len(urls("q=paving")) == 3
     assert urls("q=paving&agency=city") == ["https://city.example.gov/minutes.pdf", "https://city.example.gov/news"]
     assert urls("q=paving&agency=city&kind=pdf") == ["https://city.example.gov/minutes.pdf"]
+    question_urls = urls("q=Where%20are%20the%20paving%20minutes%3F&mode=question")
+    assert question_urls == ["https://city.example.gov/minutes.pdf"]
     assert request(port, "GET", "/api/search-text?q=paving&agency=nope")[0] == 400
 
 

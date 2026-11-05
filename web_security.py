@@ -72,7 +72,18 @@ def url_in_scope(url: object, hosts: set[str]) -> bool:
     if not isinstance(url, str):
         return False
     parsed = urlparse(url)
-    return parsed.scheme in {"http", "https"} and (parsed.hostname or "").lower() in hosts
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    expected_port = 80 if parsed.scheme == "http" else 443
+    return (
+        parsed.scheme in {"http", "https"}
+        and (parsed.hostname or "").lower() in hosts
+        and parsed.username is None
+        and parsed.password is None
+        and port in {None, expected_port}
+    )
 
 
 def visible(records: list[dict], levels: frozenset[str] | None, *keys: str) -> list[dict]:

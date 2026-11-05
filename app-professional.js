@@ -332,6 +332,58 @@ async function refreshResearchQueue() {
   container.innerHTML = `<h3>Research queue · ${queue.length} open</h3><ol>${queue.map(item => `<li><strong>${escapeHtml(item.statement)}</strong><br>${escapeHtml(item.reason)} ${item.next_test ? `Next: ${escapeHtml(item.next_test)}` : ''}</li>`).join('')}</ol>`;
 }
 
+async function askRecords(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const question = String(new FormData(form).get('question') || '').trim();
+  const button = document.getElementById('ask-records-submit');
+  const results = document.getElementById('ask-records-results');
+  button.disabled = true;
+  results.textContent = 'Searching captured public pages…';
+  try {
+    const params = new URLSearchParams({ q: question, mode: 'question' });
+    const response = await fetch(`/api/search-text?${params}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Question search failed');
+    const records = Array.isArray(payload) ? payload : [];
+    results.innerHTML = `
+      <p><strong>${records.length} matching captured record${records.length === 1 ? '' : 's'}.</strong> Matches are clues to review, not answers or proof.</p>
+      ${records.map(record => `<article class="search-hit">
+        <a href="${safeHref(record.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(record.title || record.url)}</a>
+        <small>${escapeHtml(record.url)} · ${record.content_type === 'application/pdf' ? 'PDF' : 'Web page'} · captured ${escapeHtml((record.captured_at || '').slice(0, 10))} · SHA-256 ${escapeHtml((record.sha256 || '').slice(0, 12))}</small>
+        <p>${markedExcerpt(record.excerpt || '')}</p>
+      </article>`).join('') || '<p>No captured public pages matched. This does not show that no relevant record exists; consider a narrowly scoped records request.</p>'}
+      <button type="button" class="quiet-button" data-action="save-asked-question">Save this question to the research ledger</button>`;
+    results.querySelector('[data-action="save-asked-question"]').addEventListener('click', async saveButton => {
+      saveButton.currentTarget.disabled = true;
+      try {
+        const saveResponse = await fetch('/api/claims', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            statement: question,
+            status: 'question',
+            source_ids: [],
+            alternative_explanations: [],
+            next_test: 'Review the matching captured records and identify a specific follow-up test.'
+          })
+        });
+        const saved = await saveResponse.json();
+        if (!saveResponse.ok) throw new Error(saved.error || 'Could not save the question');
+        saveButton.textContent = 'Saved to the research ledger';
+        await refreshClaims();
+      } catch (error) {
+        saveButton.disabled = false;
+        alert(`Error: ${error.message}`);
+      }
+    });
+  } catch (error) {
+    results.textContent = `Error: ${error.message}`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function refreshCollectionAudit() {
   const response = await fetch('/api/collection-audit');
   if (!response.ok) throw new Error('Failed to load collection audit');
@@ -452,12 +504,58 @@ async function runApprovedCollection() {
     if (!response.ok) throw new Error(payload.error || 'Collection failed');
     await refreshCollectionAudit();
     const collected = payload.results.filter(item => item.status === 'collected').length;
-    alert(`Approved collection complete: ${collected} of ${payload.results.length} sources preserved.`);
+    await refreshAfterAutopopulate();
+    alert(`Approved collection complete: ${collected} of ${payload.results.length} web sources preserved; ${payload.api?.new_captures ?? 0} new open-data API captures.\n${describeAutopopulate(payload.summary)}${(payload.api?.errors || []).length ? '\nNotes: ' + payload.api.errors.join('; ') : ''}`);
   } finally {
     if (button) {
       button.disabled = false;
       button.textContent = 'Run approved collection';
     }
+  }
+}
+
+async function searchHistoricalArchives(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = document.getElementById('historical-archive-submit');
+  const output = document.getElementById('historical-archive-results');
+  const formData = new FormData(form);
+  button.disabled = true;
+  button.textContent = 'Searching archives…';
+  output.textContent = 'Searching Arkansas State Archives and Library of Congress catalogs. Large searches may take a little while.';
+  try {
+    const response = await fetch('/api/historical-archive-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: formData.get('query'),
+        start_date: formData.get('start_date'),
+        end_date: formData.get('end_date')
+      })
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'Historical archive search failed');
+    const result = payload.result;
+    const archiveSummary = result.archives.map(archive =>
+      `${archive.archive}: ${archive.pages_preserved} source record(s) preserved, ${archive.catalog_only} catalog-only result(s)${archive.total_matches == null ? '' : `, ${archive.total_matches} catalog matches`}${archive.date_filtered ? `, ${archive.date_filtered} outside the selected date range` : ''}${archive.has_more ? `; result cap (${archive.result_limit}) reached, narrow terms or dates to continue` : ''}`
+    ).join('<br>');
+    output.innerHTML = `
+      <p><strong>${result.pages_preserved} source text record(s) preserved</strong> across ${result.archives.length} connected catalogs.</p>
+      <p>${archiveSummary}</p>
+      <p>These are search leads, not verified claims. Preserved text has been added to the evidence index and discrepancy pipeline.</p>
+      ${result.matches.map(match => `<article class="search-hit">
+        <a href="${safeHref(match.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(match.title)}</a>
+        <small>${escapeHtml(match.archive)} · ${escapeHtml(match.date || 'Date not recorded')} · source-text SHA-256 ${escapeHtml(match.sha256.slice(0, 12))}</small>
+        <p>${escapeHtml(match.excerpt)}</p>
+      </article>`).join('') || '<p>No page text was preserved. Check the errors below, broaden the search terms, or use another archive catalog.</p>'}
+      ${result.errors.length ? `<p><strong>Archive access notes:</strong><br>${result.errors.map(escapeHtml).join('<br>')}</p>` : ''}
+      ${result.has_more ? '<p>Some archive catalogs had more results than the per-catalog limit. Search narrower terms or date ranges to review additional pages.</p>' : ''}
+      ${result.ingest ? `<p>Index refreshed: ${result.ingest.indexed} pages indexed; ${result.ingest.facts_proposed} facts proposed; ${result.ingest.discrepancies.flags} discrepancy flags retained or updated (${result.ingest.discrepancies.added} new).</p>` : ''}`;
+  } catch (error) {
+    output.textContent = `Error: ${error.message}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Search and index archives';
   }
 }
 
@@ -538,6 +636,38 @@ async function refreshDiscrepancies() {
   }
 }
 
+function describeAutopopulate(summary) {
+  if (!summary) return '';
+  const scanned = (summary.unreadable_or_scanned || []).length;
+  return `Verified captures: ${summary.captures}. Indexed: ${summary.indexed}. New evidence records: ${summary.records_added}. Proposed facts added: ${summary.facts_proposed} (all unreviewed). Possible conflicts: ${summary.discrepancies.flags}. ` +
+    `${scanned ? `${scanned} scanned/unreadable PDFs need OCR or a records request.` : ''}`;
+}
+
+async function refreshAfterAutopopulate() {
+  await refreshEvidenceTable();
+  const response = await fetch('/api/discrepancies');
+  if (response.ok) { liveDiscrepancies = await response.json(); renderDiscrepancies(); }
+  const status = await fetch('/api/status');
+  if (status.ok) renderWorkingSet(await status.json());
+}
+
+function renderWorkingSet(status) {
+  const label = document.querySelector('#working-set');
+  if (label) label.textContent = `Working set · ${status.evidence_records} records · ${status.facts} proposed/confirmed facts`;
+}
+
+function discrepancyDetail(item) {
+  const evidence = (item.evidence || []).map(entry => `
+    <blockquote><small>${escapeHtml(entry.title || 'Source')} · <a href="${escapeHtml(entry.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(entry.url)}</a></small><br>${escapeHtml(entry.passage)}</blockquote>`).join('');
+  const explanations = (item.explanations || []).map(text => `<li>${escapeHtml(text)}</li>`).join('');
+  return `<details><summary>Show the passages, innocent explanations and next step</summary>
+    ${evidence}
+    <p><strong>Rule out first:</strong></p><ul>${explanations}</ul>
+    <p><strong>Next step:</strong> ${escapeHtml(item.next_action || 'Review the source documents.')}</p>
+    <small>This is a lead for review, not a finding. ${item.text_method === 'ocr' ? 'Text was read by OCR and may contain misread characters.' : ''}</small>
+  </details>`;
+}
+
 function renderDiscrepancies() {
   const list = document.querySelector('#discrepancy-list');
   const counter = document.querySelector('#discrepancy-count');
@@ -549,8 +679,8 @@ function renderDiscrepancies() {
     return;
   }
   
-  counter.textContent = `${liveDiscrepancies.length} open`;
-  list.innerHTML = liveDiscrepancies.slice(0,4).map((item, idx) => {
+  counter.textContent = `${liveDiscrepancies.length} open leads`;
+  list.innerHTML = liveDiscrepancies.slice(0,60).map((item, idx) => {
     const severity = (item.severity || 'medium').toLowerCase();
     const severityLabel = severity === 'high' ? 'High' : severity === 'medium' ? 'Medium' : 'Low';
     const icon = item.kind?.includes('innocence') ? '✓' : '!';
@@ -561,10 +691,11 @@ function renderDiscrepancies() {
       <article class="${isExculpatory ? 'exculpatory-evidence' : ''}">
         <span class="signal-number">${String(idx + 1).padStart(2, '0')}</span>
         <div>
-          <strong>${item.kind?.replace(/[-_]/g, ' ') || 'Review item'}</strong>
-          <p>${item.message || item.routing_rationale || 'Review the evidence chain.'}</p>
+          <strong>${escapeHtml(item.kind?.replace(/[-_]/g, ' ') || 'Review item')}${item.meeting ? ` · ${escapeHtml(item.meeting)}` : ''}</strong>
+          <p>${escapeHtml(item.message || item.routing_rationale || 'Review the evidence chain.')}</p>
+          ${item.lead ? discrepancyDetail(item) : ''}
         </div>
-        <span class="priority ${classOverride}">${isExculpatory ? 'Supports innocence' : severityLabel}</span>
+        <span class="priority ${classOverride}">${isExculpatory ? 'Supports innocence' : item.lead ? 'Lead · tier ' + item.tier : severityLabel}</span>
       </article>
     `;
   }).join('');
@@ -713,6 +844,7 @@ fetch('/api/case').then(response => {
     ).join('');
   }
   
+  fetch('/api/status').then(r => r.ok ? r.json() : null).then(s => s && renderWorkingSet(s)).catch(() => {});
   if (discrepancyResponse.ok) {
     liveDiscrepancies = await discrepancyResponse.json();
     renderDiscrepancies();
@@ -741,7 +873,14 @@ fetch('/api/case').then(response => {
   
   document.querySelector('.topbar .eyebrow').textContent = `CASEFILE / ${casefile.title.toUpperCase()}`;
   document.querySelector('.notice p').innerHTML = '<strong>Live casefile connected.</strong> All evidence, relationships, and discrepancies update in real-time from your local workspace.';
-}).catch(() => {});
+}).catch(error => {
+  console.error('Initialization failed:', error);
+  const banner = document.createElement('div');
+  banner.setAttribute('role', 'alert');
+  banner.style.cssText = 'padding:10px 16px;background:#7a1f1f;color:#fff;font:14px sans-serif';
+  banner.textContent = `Live data failed to load: ${error.message}. Is the server running with an imported casefile?`;
+  document.body.prepend(banner);
+});
 
 // Cleaner event delegation
 function initializeUi() {
@@ -809,6 +948,7 @@ function initializeUi() {
   document.getElementById('evidence-file')?.addEventListener('change', event => preserveSelectedFile(event).catch(error => alert(`Error: ${error.message}`)));
   document.getElementById('add-claim-button')?.addEventListener('click', () => { document.getElementById('claim-modal').hidden = false; });
   document.getElementById('claim-form')?.addEventListener('submit', event => submitClaimForm(event).catch(error => alert(`Error: ${error.message}`)));
+  document.getElementById('ask-records-form')?.addEventListener('submit', event => askRecords(event));
   document.querySelector('[data-action="close-claim-modal"]')?.addEventListener('click', () => { document.getElementById('claim-modal').hidden = true; });
   document.querySelector('[data-action="close-review-modal"]')?.addEventListener('click', () => { document.getElementById('review-modal').hidden = true; });
   document.querySelector('[data-action="close-request-modal"]')?.addEventListener('click', () => { document.getElementById('request-modal').hidden = true; });
@@ -820,7 +960,59 @@ function initializeUi() {
   document.getElementById('harden-evidence-button')?.addEventListener('click', () => hardenEvidenceAccess().catch(error => alert(`Error: ${error.message}`)));
   document.getElementById('export-counsel-packet')?.addEventListener('click', () => exportCounselPacket().catch(error => alert(`Error: ${error.message}`)));
   document.getElementById('print-counsel-packet')?.addEventListener('click', openPrintableCounselPacket);
+  document.getElementById('run-autopopulate')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = 'Indexing and comparing...';
+    try {
+      const response = await fetch('/api/autopopulate', { method: 'POST' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Autopopulate failed');
+      await refreshAfterAutopopulate();
+      alert(describeAutopopulate(payload.summary));
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Index and compare collected pages';
+    }
+  });
+  document.getElementById('statement-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const isReference = data.is_reference === 'on';
+    const body = isReference
+      ? { url: data.url, outlet: data.platform, published: data.posted, topic: data.author, summary: data.quote }
+      : { url: data.url, author: data.author, role: data.role, platform: data.platform, posted: data.posted, quote: data.quote };
+    try {
+      const response = await fetch(isReference ? '/api/references' : '/api/statements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Save failed');
+      if (!isReference) await fetch('/api/autopopulate', { method: 'POST' });
+      event.currentTarget.reset();
+      alert(isReference ? 'Citation saved.' : 'Statement saved and compared against the records. Check the discrepancy list.');
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    }
+  });
+  document.getElementById('build-lead-report')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const response = await fetch('/api/report');
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Report failed');
+      document.getElementById('lead-report').textContent = payload.markdown;
+      document.getElementById('lead-report-download').href = URL.createObjectURL(new Blob([payload.markdown], { type: 'text/markdown' }));
+      document.getElementById('lead-report-panel').hidden = false;
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      button.disabled = false;
+    }
+  });
   document.getElementById('run-approved-collection')?.addEventListener('click', () => runApprovedCollection().catch(error => alert(`Error: ${error.message}`)));
+  document.getElementById('historical-archive-form')?.addEventListener('submit', event => searchHistoricalArchives(event));
   
   // Close notice
   document.querySelectorAll('.close-notice').forEach(btn => {
