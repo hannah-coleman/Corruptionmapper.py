@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Case review</title>
+<style>
+ body{font-family:system-ui,sans-serif;max-width:1000px;margin:auto;padding:1rem}
+ .note{background:#fff7d6;padding:.6rem;border:1px solid #d9c36a}
+ fieldset{margin:1rem 0} label{display:block;margin:.3rem 0} input,select,textarea{width:100%;max-width:640px}
+ article{border:1px solid #aaa;padding:.6rem;margin:.6rem 0} small{color:#555} blockquote{margin:.3rem 1rem;color:#222}
+</style>
+</head>
+<body>
+<p><a href="/start.html">&larr; Home</a></p>
+<h1>Case review</h1>
+<p class="note">Enter the records for a case: reports, booking records, policies or SOPs, news or public statements, and a person's own recollection. The app lines them up and shows where they differ. It does not say which record is accurate or why they differ, treats recollections as given and not as established, and gives no legal advice. Private individuals are replaced with codes in reports unless they agreed to be named. Entries stay on this computer.</p>
+<h2>Cases</h2>
+<div id="cases">Loading...</div>
+<div id="analysis"></div>
+<h2>Across cases</h2>
+<div id="patterns"></div>
+<fieldset><legend>Add a record</legend>
+<form id="add">
+<label>Case name *<input name="case_id" required></label>
+<label>Kind of record *<select name="kind"><option value="report">Official report</option><option value="booking">Booking or jail record</option><option value="policy">Policy or SOP</option><option value="statement">Recollection or statement</option><option value="news">News or public statement</option><option value="other">Other record</option></select></label>
+<label>Title<input name="title"></label>
+<label>Source * (where this record came from, e.g. FOIA response, date)<input name="source" required></label>
+<label>Agency<input name="agency"></label>
+<label>Document date<input name="doc_date" type="date"></label>
+<label>Incident date<input name="incident_date" type="date"></label>
+<label>Policy effective date (policies only)<input name="effective_date" type="date"></label>
+<label>People in an official role named in this record (separate with ;). Official acts only.<input name="officials"></label>
+<label>Private individuals named (separate with ;). These become codes in reports.<input name="private_people"></label>
+<label>Text of the record *<textarea name="text" rows="10" required></textarea></label>
+<button>Add record</button> <span id="msg" role="status"></span>
+</form>
+<p><small>Tip: labelled lines like "Time of arrest: 10:42 PM", "Booking time: 9:15 PM", "Charge: ...", "Location: ..." let the app compare values between records.</small></p>
+</fieldset>
+<fieldset><legend>Ask an agency for its policies</legend>
+<label>Agency name<input id="agency" placeholder="e.g. the police department or sheriff's office"></label>
+<button id="policyReq" type="button">Queue a records request draft</button> <span id="pmsg" role="status"></span>
+<p><small>Creates an unsent draft in your request queue. Review it and send it yourself.</small></p></fieldset>
+<h2>People listed as private individuals</h2>
+<div id="people"></div>
+<script src="/cases.js"></script>
+</body>
+</html>

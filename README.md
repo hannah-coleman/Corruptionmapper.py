@@ -84,3 +84,15 @@ The local server is designed to be safe by default. These controls are implement
 * Restricted, counsel-protected, and unlabeled evidence is withheld from the API by default. The local launcher requires `--allow-protected` to expose it.
 
 Known limitations: no user authentication or per-user access control, no encryption at rest, and the audit log is tamper-evident but not externally anchored. Case data lives in `evidence/` and `backups/`, which are git-ignored and must never be committed. “Government-grade” certification or compliance is not claimed.
+
+
+## Case review (neutral record comparison)
+
+`/cases.html` lets you enter the records for a case (reports, booking records, policies or SOPs, news or public statements, and a person's recollection), each with its source. It shows a timeline, labelled values that differ between records (times, charge, statute, location, people present), each policy requirement beside the record passages that use the same terms, and wording features (indirect phrasing, actions with no named actor).
+
+- It never says which record is accurate, why records differ, or whether anyone broke a rule or law. Recollections are shown as given, not as established. Policies are shown beside records for a reviewer or attorney to weigh.
+- Reports replace private individuals with codes (Person-A) unless they are marked as having agreed to be named. People acting in an official role keep their names. The screen view on your own computer is not redacted; exports are. Check any export before sharing it.
+- The cross-case view lists officials who appear in two or more entered cases. Counts come from self-selected entries, are not rates, and say nothing about conduct.
+- "Ask an agency for its policies" queues an unsent FOIA draft in the request queue.
+- Entries are stored in `evidence/case-review.json`, which is git-ignored and blocked by the commit guard.
+- This is a records-organizing tool, not legal advice. If it is used for other people's cases, get a lawyer to review your client terms, confidentiality and data handling first.

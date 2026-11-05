@@ -26,7 +26,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
     targets: Path = Path("targets.txt")
     # Protection levels this server may expose; evidence labeled otherwise (or unlabeled) is withheld.
     visible_levels = web_security.PUBLIC_LEVELS
-    public_files = {"/", "/index.html", "/app-professional.js", "/style.css", "/style-professional.css", "/map.html", "/map.js", "/start.html", "/start.js", "/layoffs.html", "/layoffs.js"}
+    public_files = {"/", "/index.html", "/app-professional.js", "/style.css", "/style-professional.css", "/map.html", "/map.js", "/start.html", "/start.js", "/layoffs.html", "/layoffs.js", "/cases.html", "/cases.js"}
 
     def do_GET(self) -> None:
         route = urlparse(self.path).path
@@ -153,6 +153,26 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                     result = {"status": "ok", "record": property_map.add_place(Path("evidence/places.json"), payload)}
                 else:
                     result = {"status": "ok", **property_map.import_csv(Path("evidence/places.json"), str(payload.get("csv", "")))}
+            except ValueError as error:
+                self.send_json({"error": str(error)}, 400)
+                return
+            self.send_json(result)
+            return
+        if route in {"/api/case-review/entries", "/api/case-review/consent", "/api/case-review/policy-request"}:
+            try:
+                import case_review
+                payload = self.read_json_object()
+                store = Path("evidence/case-review.json")
+                if route.endswith("/policy-request"):
+                    from lead_actions import policy_request
+                    from request_queue import add_request
+                    queued = add_request(Path("evidence/request-queue.json"), policy_request(str(payload.get("agency", ""))))
+                    result = {"status": "ok", "request_id": queued["id"]}
+                elif route.endswith("/entries"):
+                    entry = case_review.add_entry(store, payload)
+                    result = {"status": "ok", "record": {k: entry[k] for k in ("id", "case_id", "kind", "title")}}
+                else:
+                    result = {"status": "ok", "person": case_review.set_consent(store, str(payload.get("name", "")), bool(payload.get("named_ok")))}
             except ValueError as error:
                 self.send_json({"error": str(error)}, 400)
                 return
@@ -428,6 +448,22 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 payload = jobs.get(route.removeprefix("/api/jobs/"))
                 if payload is None:
                     self.send_json({"error": "Job not found."}, 404)
+                    return
+            elif route.startswith("/api/case-review"):
+                import case_review
+                store = Path("evidence/case-review.json")
+                case_id = query.get("case", [""])[0].strip()
+                try:
+                    if route == "/api/case-review/report":
+                        payload = {"markdown": case_review.build_report(store, case_id, redacted=query.get("redact", ["1"])[0] != "0")}
+                    elif route == "/api/case-review/people":
+                        payload = {"people": case_review._load(store)["people"]}
+                    elif case_id:
+                        payload = case_review.analyze(store, case_id)
+                    else:
+                        payload = {"cases": case_review.cases(store), "patterns": case_review.patterns(store)}
+                except ValueError as error:
+                    self.send_json({"error": str(error)}, 400)
                     return
             elif route == "/api/layoffs":
                 import layoffs

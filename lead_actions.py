@@ -66,6 +66,18 @@ def request_drafts(flags: list[dict]) -> list[dict]:
     return drafts
 
 
+def policy_request(agency: str) -> dict:
+    """Neutral draft asking an agency for its written policies. Not sent by the app."""
+    agency = " ".join(str(agency).split())
+    if not agency:
+        raise ValueError("Enter the agency name.")
+    description = ("The agency's current written policies, general orders or standard operating procedures on: arrests and booking, use of force and "
+                   "its documentation, searches and seizures, vehicle and pedestrian stops, report writing, evidence handling, and complaint intake; "
+                   "with the effective date and revision history of each, and any earlier versions in force since January 1 of the year in question.")
+    return {"agency": agency, "law": LAW, "description": description, "basis": "Written policies are needed to compare against records entered for a case.",
+            "request_text": f"Under the {LAW}, I request copies of the following public records: {description} {FOOTER}"}
+
+
 def verification_checklist(net: dict) -> list[dict]:
     items = []
     for edge in net["edges"]:
