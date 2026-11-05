@@ -8,7 +8,9 @@ Corruption Mapper is a modular Python and JavaScript application engineered for 
 
 ## Project Status
 
-🚧 **Active Development** — Core collectors and structural audit engines are functional. Expansion and refinement are ongoing.
+🚧 **Active development, under line-by-line review.** Core collectors, search, verification and case-review features work and are covered by an automated test suite. The code was written with an AI coding assistant under my direction (requirements, design rules, testing and review are mine). I am reading and checking each module myself, so expect changes. It is a personal tool and is not offered for use by others yet.
+
+**What I decided and checked:** every claim must cite a saved record; wording stays neutral (records are compared, intent and guilt are never asserted); recollections are shown as given, not as established; private individuals are redacted in exports; nothing is sent or filed automatically; case data stays local and is blocked from commits by a pre-commit guard.
 
 This is a research workspace, not a law-enforcement system or a finding that wrongdoing occurred. Treat leads as unverified, preserve source material, document contrary evidence and alternative explanations, and have consequential conclusions reviewed by qualified people.
 
