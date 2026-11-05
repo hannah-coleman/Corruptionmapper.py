@@ -34,7 +34,9 @@ async function openCase(name) {
   const report = el('button', {}, [t('Build redacted report')]);
   const out = el('pre', {style: 'white-space:pre-wrap'});
   report.addEventListener('click', async () => { out.textContent = (await api('/api/case-review/report?case=' + encodeURIComponent(name))).markdown; });
-  kids.push(el('h3', {}, [t('Report')]), report, out, el('h3', {}, [t('Limits')]), ...a.limits.map(l => el('div', {}, [t('- ' + l)])));
+  const packet = el('button', {}, [t('Build attorney packet')]);
+  packet.addEventListener('click', async () => { out.textContent = (await api('/api/case-review/packet?case=' + encodeURIComponent(name))).markdown; });
+  kids.push(el('h3', {}, [t('Report')]), report, t(' '), packet, out, el('h3', {}, [t('Limits')]), ...a.limits.map(l => el('div', {}, [t('- ' + l)])));
   box.replaceChildren(...kids);
 }
 async function draw() {

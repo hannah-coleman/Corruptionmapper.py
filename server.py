@@ -467,7 +467,9 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 store = Path("evidence/case-review.json")
                 case_id = query.get("case", [""])[0].strip()
                 try:
-                    if route == "/api/case-review/report":
+                    if route == "/api/case-review/packet":
+                        payload = {"markdown": case_review.build_packet(store, case_id, redacted=query.get("redact", ["1"])[0] != "0")}
+                    elif route == "/api/case-review/report":
                         payload = {"markdown": case_review.build_report(store, case_id, redacted=query.get("redact", ["1"])[0] != "0")}
                     elif route == "/api/case-review/people":
                         payload = {"people": case_review._load(store)["people"]}

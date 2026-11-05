@@ -21,6 +21,8 @@ from uuid import uuid4
 
 KINDS = {"policy": "Policy or SOP", "report": "Official report", "booking": "Booking or jail record", "statement": "Recollection or statement",
          "news": "News or public statement", "other": "Other record"}
+BASES = {"document": "Document or official record", "photo": "Photo or screenshot", "recording": "Audio or video recording",
+         "social": "Public social media or website page", "memory": "Someone's recollection (no document)"}
 MAX_TEXT = 400_000
 MAX_ENTRIES = 5000
 
@@ -96,7 +98,10 @@ def add_entry(path: Path | str, payload: dict) -> dict:
         raise ValueError("Paste or type the record's text.")
     if len(text) > MAX_TEXT:
         raise ValueError("That text is too long. Split it into separate entries.")
-    entry = {"id": uuid4().hex[:12], "case_id": case_id, "kind": kind, "title": " ".join(str(payload.get("title", "")).split()) or KINDS[kind],
+    basis = str(payload.get("basis", "")).strip() or ("memory" if kind == "statement" else "document")
+    if basis not in BASES:
+        raise ValueError("Choose what this entry rests on.")
+    entry = {"id": uuid4().hex[:12], "basis": basis, "case_id": case_id, "kind": kind, "title": " ".join(str(payload.get("title", "")).split()) or KINDS[kind],
              "doc_date": _day(payload.get("doc_date"), "Document date"), "incident_date": _day(payload.get("incident_date"), "Incident date"),
              "effective_date": _day(payload.get("effective_date"), "Policy effective date"), "agency": " ".join(str(payload.get("agency", "")).split()),
              "source": source, "text": text, "officials": _names(payload.get("officials")), "private_people": _names(payload.get("private_people"))}
@@ -360,4 +365,56 @@ def build_report(path: Path | str, case_id: str, redacted: bool = True) -> str:
         lines += ["No policy entries with requirement language were entered for this case.", ""]
     lines += ["## Wording features", "These describe how sentences are built (indirect phrasing, or an action without a named actor). They do not describe what happened or why."]
     lines += [f"- {n['feature']}: \"{clean(n['sentence'])}\"" for n in analysis["wording"][:40]] or ["- None noted."]
+    return "\n".join(lines) + "\n"
+
+
+ATTORNEY_QUESTIONS = [
+    "Which deadlines apply to each possible claim, when does each clock start, and could any of them be paused (tolled)?",
+    "Which of the records listed should be obtained in original or certified form?",
+    "Which entries should be kept confidential, and what should not be shared or published before the case is resolved?",
+    "Is there anything here that should go to a particular oversight body, and in what order?",
+]
+
+
+def build_packet(path: Path | str, case_id: str, redacted: bool = True) -> str:
+    """One document for an attorney: dated timeline, evidence index with what each item rests on, and open questions."""
+    data = _load(path)
+    entries = [e for e in data["entries"] if e["case_id"] == case_id]
+    if not entries:
+        raise ValueError("No entries for that case.")
+    analysis = analyze(path, case_id)
+    people = data["people"] if redacted else []
+    clean = (lambda s: redact(str(s), people)) if redacted else str
+    lines = [f"# Attorney packet: {clean(case_id)}", "",
+             "Prepared from records entered by the case owner. It lists what each record says and where records differ. It is not legal advice, "
+             "does not say which record is accurate, and does not describe anyone's intent.", "",
+             "Private individuals are replaced by codes unless they agreed to be named." if redacted else "WARNING: unredacted copy. Do not share.", "",
+             "## 1. Timeline (events as dated in the records)"]
+    dated = [(e["incident_date"] or e["doc_date"] or "undated", e) for e in entries if e["kind"] != "policy"]
+    for day, e in sorted(dated, key=lambda x: (x[0] == "undated", x[0])):
+        lines.append(f"- {day}: {clean(e['title'])} ({KINDS[e['kind']]}; rests on: {BASES[e['basis']]}; source: {clean(e['source'])}) [id {e['id']}]")
+    lines += ["", "## 2. Evidence index", "| id | Record | Kind | Rests on | Document date | Source |", "|---|---|---|---|---|---|"]
+    for e in entries:
+        lines.append(f"| {e['id']} | {clean(e['title'])} | {KINDS[e['kind']]} | {BASES[e['basis']]} | {e['doc_date'] or 'not entered'} | {clean(e['source'])} |")
+    counts: dict[str, int] = defaultdict(int)
+    for e in entries:
+        counts[BASES[e["basis"]]] += 1
+    lines += ["", "Entries by what they rest on: " + "; ".join(f"{label}: {n}" for label, n in sorted(counts.items())) + "."]
+    lines += ["", "## 3. Where the records differ"]
+    for item in analysis["differences"]:
+        lines.append(f"- {item['message']} " + "; ".join(f"{clean(v['title'])}: {clean(v['value'])}" for v in item["values"]))
+    if not analysis["differences"]:
+        lines.append("- None found in the labelled fields.")
+    versions = [i for i in analysis["policy"] if i["version_note"]]
+    lines += ["", "## 4. Policy versions to confirm"]
+    lines += sorted({f"- {clean(i['policy']['title'])}: {i['version_note']}" for i in versions}) or ["- None noted."]
+    lines += ["", "## 5. Open questions"]
+    questions = [f"Can the original or system record be obtained for: {item['field']}?" for item in analysis["differences"]]
+    questions += [f"Entry '{clean(e['title'])}' [id {e['id']}] rests on recollection only. Is there a document, photo or recording that supports it?"
+                  for e in entries if e["basis"] == "memory"]
+    questions += [f"Entry '{clean(e['title'])}' [id {e['id']}] has no date. Can one be established?" for e in entries if e["kind"] != "policy" and not (e["incident_date"] or e["doc_date"])]
+    questions += [f"Entry '{clean(e['title'])}' [id {e['id']}] is a social media or web page. Was it saved with its address and capture date?" for e in entries if e["basis"] == "social"]
+    questions += ATTORNEY_QUESTIONS
+    lines += [f"{n}. {q}" for n, q in enumerate(questions, 1)]
+    lines += ["", "## Limits", *[f"- {item}" for item in LIMITS]]
     return "\n".join(lines) + "\n"

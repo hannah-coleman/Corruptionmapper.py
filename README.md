@@ -93,6 +93,7 @@ Known limitations: no user authentication or per-user access control, no encrypt
 - It never says which record is accurate, why records differ, or whether anyone broke a rule or law. Recollections are shown as given, not as established. Policies are shown beside records for a reviewer or attorney to weigh.
 - Reports replace private individuals with codes (Person-A) unless they are marked as having agreed to be named. People acting in an official role keep their names. The screen view on your own computer is not redacted; exports are. Check any export before sharing it.
 - The cross-case view lists officials who appear in two or more entered cases. Counts come from self-selected entries, are not rates, and say nothing about conduct.
+- "Build attorney packet" produces one document: a dated timeline, an evidence index showing what each entry rests on (document, photo, recording, public web page or recollection), where records differ, policy versions to confirm, and open questions for the attorney. Exports are redacted by default.
 - "Ask an agency for its policies" queues an unsent FOIA draft in the request queue.
 - Entries are stored in `evidence/case-review.json`, which is git-ignored and blocked by the commit guard.
 - This is a records-organizing tool, not legal advice. If it is used for other people's cases, get a lawyer to review your client terms, confidentiality and data handling first.
