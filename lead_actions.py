@@ -112,7 +112,7 @@ def run(evidence_dir: Path | str = "evidence") -> dict:
     flags_path = evidence_dir / "discrepancy-flags.json"
     data = json.loads(flags_path.read_text(encoding="utf-8")) if flags_path.exists() else []
     flags = data if isinstance(data, list) else data.get("flags", [])
-    queue = evidence_dir / "request-queue.json"
+    queue = evidence_dir / "requests.json"
     known = {re.sub(r"\s+", " ", r.get("description", "")) for r in list_requests(queue)}
     added = []
     for draft in request_drafts(flags):

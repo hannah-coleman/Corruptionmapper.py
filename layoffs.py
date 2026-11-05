@@ -9,7 +9,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 

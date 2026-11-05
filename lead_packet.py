@@ -78,7 +78,7 @@ def build_packet(evidence_dir: Path | str = "evidence") -> dict:
     return {"generated_at": datetime.now(timezone.utc).isoformat(), "leads": leads, "withheld_non_public": withheld,
             "custody_problems": bad, "captures_checked": len(custody),
             "requests": [{"agency": r.get("agency", ""), "status": r.get("status", ""), "deadline": r.get("deadline", ""), "description": r.get("description", "")}
-                         for r in list_requests(evidence_dir / "request-queue.json")]}
+                         for r in list_requests(evidence_dir / "requests.json")]}
 
 
 def render_packet(packet: dict) -> str:

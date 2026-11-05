@@ -102,3 +102,19 @@ def test_policy_request_is_a_neutral_unsent_draft():
     assert not BANNED.search(draft["request_text"]) and "use of force" in draft["description"]
     with pytest.raises(ValueError):
         lead_actions.policy_request(" ")
+
+
+def test_mark_sent_tracks_deadline_and_only_applies_to_drafts(tmp_path):
+    import request_queue as rq
+    path = tmp_path / "r.json"
+    record = rq.add_request(path, {"agency": "A", "description": "d"})
+    for bad in (("", ""), ("May", ""), ("2026-11-05", "soon")):
+        with pytest.raises(ValueError):
+            rq.mark_sent(path, record["id"], *bad)
+    sent = rq.mark_sent(path, record["id"], "2026-11-05", "2026-11-10")
+    assert sent["status"] == "submitted"
+    assert rq.deadline_status(rq.list_requests(path), "2026-11-06")[0]["days_remaining"] == 4
+    with pytest.raises(ValueError):
+        rq.mark_sent(path, record["id"], "2026-11-05")
+    with pytest.raises(ValueError):
+        rq.mark_sent(path, "missing", "2026-11-05")

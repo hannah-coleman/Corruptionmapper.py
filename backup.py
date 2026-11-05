@@ -4,7 +4,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZipFile
+from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile
 
 
 MANIFEST_NAME = "signal-ledger-backup-manifest.json"
@@ -51,5 +51,13 @@ def verify_backup(archive_path: Path | str) -> dict:
                 if len(content) != entry["size_bytes"] or _sha256(content) != entry["sha256"]:
                     issues.append(f"Integrity mismatch: {entry['path']}")
             return {"valid": not issues, "files": len(manifest.get("files", [])), "issues": issues, "archive": str(archive)}
-    except (OSError, KeyError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, KeyError, ValueError, BadZipFile, json.JSONDecodeError) as error:
         return {"valid": False, "files": 0, "issues": [f"Backup could not be verified: {error}"], "archive": str(archive)}
+
+
+def latest_backup_status(destination_dir: Path | str) -> dict:
+    """Verify the newest backup archive, or say that none exists."""
+    archives = sorted(Path(destination_dir).glob("signal-ledger-backup-*.zip"))
+    if not archives:
+        return {"valid": False, "files": 0, "issues": ["No backup has been made yet."], "archive": ""}
+    return verify_backup(archives[-1])

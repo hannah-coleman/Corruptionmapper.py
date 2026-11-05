@@ -18,7 +18,7 @@ This is a research workspace, not a law-enforcement system or a finding that wro
 * **Audit Engines:** Validation workflows executing compliance checks and anomaly detection.
 * **Question-driven research:** Lead reports suggest follow-up questions from open record discrepancies. “Ask the records” searches captured public pages and lets you save a question to the research ledger; matches are evidence leads, not generated answers. Historical Archive Discovery searches the public Arkansas State Archives Digital Archives CONTENTdm collections and digitized U.S. newspaper OCR in the Library of Congress Chronicling America API, preserves matching text with provenance, then indexes it for cross-reference. This does not search every archive; other catalogs and inaccessible collections are listed as coverage gaps.
 * **Structured Facts:** Dates, amounts, and vote tallies are extracted from preserved documents by deterministic rules, pinned to their exact passage and source hash, and confirmed or rejected by a named reviewer. Only confirmed facts feed the comparison and hypothesis engines. Your own uploads are restricted by default; run `python3 server.py --allow-protected` locally to review them.
-* **Governance & Architecture:** Comprehensive structural frameworks (`APP_GOVERNANCE.md`, `CASEFILE_DESIGN.md`, etc.) defining data hygiene and boundary enforcement.
+* **Governance & Architecture:** Comprehensive structural frameworks (early planning notes, kept in `docs/early-design/` and possibly out of date) defining data hygiene and boundary enforcement.
 
 ## Tech Stack
 
@@ -58,7 +58,7 @@ python3 run_local.py --allow-protected
 
 Anyone or any software running under your computer account may be able to access local files or the loopback app; this option is not a substitute for authentication. Keep the casefile and evidence directory private and backed up. Do not put originals in Git, email, or a public demo.
 
-Turn open leads into action with `python3 lead_actions.py`. It queues neutral draft records requests (never sent automatically) in `evidence/request-queue.json` and writes `evidence/verification-checklist.md` for sources that block automated access, such as the Secretary of State business search. Search those by hand, save the result with *Preserve local file*, and confirm identity before linking any name.
+Turn open leads into action with `python3 lead_actions.py`. It queues neutral draft records requests (never sent automatically) in `evidence/requests.json` and writes `evidence/verification-checklist.md` for sources that block automated access, such as the Secretary of State business search. Search those by hand, save the result with *Preserve local file*, and confirm identity before linking any name.
 
 Verify each lead against the original page with `POST /api/discrepancies/<id>/verify` (method, result, reviewer, note, page). A lead counts as verified only if a person recorded the check, and the check is voided if the extracted text later changes. `python3 lead_packet.py` writes `evidence/lead-packet.md` and `.json`: leads grouped by verification level, each with source URL, capture date, SHA-256 (re-hashed at build time), the quoted passage, innocent explanations and next step, plus the request log and an up-front statement of limits. Leads not marked public are left out.
 

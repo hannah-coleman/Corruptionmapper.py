@@ -25,7 +25,7 @@ def test_run_queues_drafts_once_and_writes_checklist(tmp_path, monkeypatch):
     first = la.run(tmp_path)
     second = la.run(tmp_path)
     assert first["draft_requests_added"] == 3 and second["draft_requests_added"] == 0
-    assert all(r["status"] == "draft" for r in json.loads((tmp_path / "request-queue.json").read_text()))
+    assert all(r["status"] == "draft" for r in json.loads((tmp_path / "requests.json").read_text()))
     assert (tmp_path / "verification-checklist.md").exists()
 
 

@@ -1,6 +1,5 @@
 import json
 
-import pytest
 
 import run_local
 from casefile_db import import_case

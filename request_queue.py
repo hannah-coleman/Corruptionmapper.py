@@ -75,3 +75,26 @@ def link_response_evidence(path: Path | str, request_id: str, evidence_id: str) 
         target.write_text(json.dumps(requests, indent=2), encoding="utf-8")
         return request
     raise ValueError("Records request not found.")
+
+
+def mark_sent(path: Path | str, request_id: str, sent_on: str, deadline: str = "") -> dict:
+    """Record that the user sent a draft themselves. The app never sends requests."""
+    for label, value in (("Sent date", sent_on), ("Response deadline", deadline)):
+        if value:
+            try:
+                datetime.fromisoformat(value)
+            except ValueError as error:
+                raise ValueError(f"{label} must be a date like 2026-11-05.") from error
+    if not sent_on:
+        raise ValueError("Enter the date you sent it.")
+    target = Path(path)
+    requests = list_requests(target)
+    for request in requests:
+        if request.get("id") != request_id:
+            continue
+        if request.get("status") != "draft":
+            raise ValueError("Only a draft can be marked as sent.")
+        request.update({"status": "submitted", "sent_on": sent_on, "deadline": deadline})
+        target.write_text(json.dumps(requests, indent=2), encoding="utf-8")
+        return request
+    raise ValueError("Records request not found.")

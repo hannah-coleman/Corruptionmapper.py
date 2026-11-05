@@ -62,7 +62,7 @@ def _xml_text(data: bytes, tags: tuple[str, ...], break_tags: tuple[str, ...]) -
 
 def extract_office_pages(path: Path) -> list[str]:
     """Text of a .docx (one page) or .xlsx (one page per sheet). Read-only; formulas are not evaluated."""
-    import xml.etree.ElementTree
+    import xml.etree.ElementTree as ET
     import zipfile
     try:
         with zipfile.ZipFile(path) as archive:
@@ -78,12 +78,10 @@ def extract_office_pages(path: Path) -> list[str]:
             if "xl/workbook.xml" in names:
                 shared: list[str] = []
                 if "xl/sharedStrings.xml" in names:
-                    import xml.etree.ElementTree as ET
                     for si in ET.fromstring(read("xl/sharedStrings.xml")):
                         shared.append("".join(t.text or "" for t in si.iter() if t.tag.rsplit("}", 1)[-1] == "t"))
                 pages = []
                 for sheet in sorted(n for n in names if n.startswith("xl/worksheets/sheet") and n.endswith(".xml")):
-                    import xml.etree.ElementTree as ET
                     cells = []
                     for cell in ET.fromstring(read(sheet)).iter():
                         if cell.tag.rsplit("}", 1)[-1] != "c":
@@ -95,7 +93,7 @@ def extract_office_pages(path: Path) -> list[str]:
                         cells.append(inline or value or "")
                     pages.append(" ".join(c for c in cells if c))
                 return pages
-    except (zipfile.BadZipFile, ValueError, KeyError, xml.etree.ElementTree.ParseError):
+    except (zipfile.BadZipFile, ValueError, KeyError, ET.ParseError):
         return []
     return []
 

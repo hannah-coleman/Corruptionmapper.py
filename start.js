@@ -53,7 +53,7 @@ async function load() {
   const steps = [
     [home.documents > 0, 'Add records', `Add records you have, or use the full workspace to search archives and save pages. ${home.documents} documents indexed so far.`, '#upload'],
     [checked, 'Check your leads', 'Open each lead below, compare it with the original page, and record what you found.', '#leads'],
-    [sent, 'Request what is missing', 'Send records requests for anything the leads show is missing (drafts are in the request queue).', '/index.html'],
+    [sent, 'Request what is missing', 'Send records requests for anything the leads show is missing (drafts are in the request queue).', '/requests.html'],
     [home.places > 0, 'Map places', 'Add properties, businesses and churches from filed records to see shared owners and agents.', '/map.html'],
     [home.packet_built, 'Build a packet', 'Package verified and unverified leads with their sources and hashes.', '#packet']];
   document.getElementById('steps').replaceChildren(...steps.map(([done, title, text, href]) =>

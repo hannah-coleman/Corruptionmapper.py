@@ -26,7 +26,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
     targets: Path = Path("targets.txt")
     # Protection levels this server may expose; evidence labeled otherwise (or unlabeled) is withheld.
     visible_levels = web_security.PUBLIC_LEVELS
-    public_files = {"/", "/index.html", "/app-professional.js", "/style.css", "/style-professional.css", "/map.html", "/map.js", "/start.html", "/start.js", "/layoffs.html", "/layoffs.js", "/cases.html", "/cases.js"}
+    public_files = {"/", "/index.html", "/app-professional.js", "/style.css", "/style-professional.css", "/map.html", "/map.js", "/start.html", "/start.js", "/layoffs.html", "/layoffs.js", "/cases.html", "/cases.js", "/requests.html", "/requests.js"}
 
     def do_GET(self) -> None:
         route = urlparse(self.path).path
@@ -142,6 +142,19 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
         if route.startswith("/api/claims/") and route.endswith("/review"):
             self.review_claim_record(route)
             return
+        if route.startswith("/api/requests/") and route.endswith("/sent"):
+            try:
+                from request_queue import mark_sent
+                from audit_log import append_entry
+                payload = self.read_json_object()
+                request_id = route.removeprefix("/api/requests/").removesuffix("/sent")
+                record = mark_sent(Path("evidence/requests.json"), request_id, str(payload.get("sent_on", "")).strip(), str(payload.get("deadline", "")).strip())
+                append_entry(Path("evidence/audit.jsonl"), "records-request-sent", request_id, {"agency": record.get("agency", ""), "sent_on": record["sent_on"]})
+            except ValueError as error:
+                self.send_json({"error": str(error)}, 400)
+                return
+            self.send_json({"status": "ok", "record": record})
+            return
         if route.startswith("/api/discrepancies/") and route.endswith("/verify"):
             self.verify_lead(route)
             return
@@ -166,7 +179,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 if route.endswith("/policy-request"):
                     from lead_actions import policy_request
                     from request_queue import add_request
-                    queued = add_request(Path("evidence/request-queue.json"), policy_request(str(payload.get("agency", ""))))
+                    queued = add_request(Path("evidence/requests.json"), policy_request(str(payload.get("agency", ""))))
                     result = {"status": "ok", "request_id": queued["id"]}
                 elif route.endswith("/entries"):
                     entry = case_review.add_entry(store, payload)
@@ -473,7 +486,7 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 from discrepancy_engine import load_flags
                 import property_map, layoffs
                 from request_queue import list_requests
-                reqs = list_requests(Path("evidence/request-queue.json"))
+                reqs = list_requests(Path("evidence/requests.json"))
                 payload = {"verification": summary(load_flags(Path("evidence/discrepancy-flags.json"))),
                            "requests": {s: sum(1 for r in reqs if r.get("status") == s) for s in {r.get("status", "draft") for r in reqs}},
                            "places": len(property_map.load_places(Path("evidence/places.json"))),
@@ -569,10 +582,8 @@ class SignalLedgerHandler(SimpleHTTPRequestHandler):
                 verification = verify_log(Path("evidence/audit.jsonl"))
                 payload = {**verification, "recent_entries": read_entries(Path("evidence/audit.jsonl"))[-12:]}
             elif route == "/api/backup-status":
-                from backup import verify_backup
-                backups = sorted(Path("backups").glob("signal-ledger-backup-*.zip"))
-                payload = {"time_range": self.case_time_range(), "agencies": build_plan(
-                    registry, self.captured_documents(), list_requests(Path("evidence/requests.json")), self.case_time_range())}
+                from backup import latest_backup_status
+                payload = latest_backup_status(Path("backups"))
             elif route == "/api/security-status":
                 from security_audit import assess_evidence_permissions
                 payload = assess_evidence_permissions(Path("evidence"))

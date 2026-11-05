@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BLOCKED_PATHS = re.compile(r"(^|/)(evidence|backups|uploads)/|(^|/)(casefile|claims|facts|statements|request-queue)\.json$|\.sqlite$|(^|/)\.env$|\.private-terms\.txt$|-manifest\.jsonl$")
+BLOCKED_PATHS = re.compile(r"(^|/)(evidence|backups|uploads)/|(^|/)(casefile|claims|facts|statements|requests|request-queue)\.json$|\.sqlite$|(^|/)\.env$|\.private-terms\.txt$|-manifest\.jsonl$")
 ALLOWED = {"casefile.example.json"}
 
 

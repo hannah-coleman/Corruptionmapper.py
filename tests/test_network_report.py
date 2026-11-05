@@ -58,7 +58,7 @@ def test_report_includes_auto_suggested_discrepancy_questions():
 
 def test_pattern_questions_come_from_records_and_never_assume_wrongdoing():
     flags = [
-        {"status": "open", "kind": "agenda-only", "message": f"The agenda lists a property at 703 East Lake Street that the minutes never mention", "link": {"detail": d}}
+        {"status": "open", "kind": "agenda-only", "message": "The agenda lists a property at 703 East Lake Street that the minutes never mention", "link": {"detail": d}}
         for d in ("2026-06-08 (#185)", "2026-07-13 (#187)")
     ] + [{"status": "open", "kind": "vote-tally", "message": "tally mismatch"}]
     net = {
