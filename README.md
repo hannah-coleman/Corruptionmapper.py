@@ -20,7 +20,7 @@ This is a research workspace, not a law-enforcement system or a finding that wro
 * **Audit Engines:** Validation workflows executing compliance checks and anomaly detection.
 * **Question-driven research:** Lead reports suggest follow-up questions from open record discrepancies. “Ask the records” searches captured public pages and lets you save a question to the research ledger; matches are evidence leads, not generated answers. Historical Archive Discovery searches the public Arkansas State Archives Digital Archives CONTENTdm collections and digitized U.S. newspaper OCR in the Library of Congress Chronicling America API, preserves matching text with provenance, then indexes it for cross-reference. This does not search every archive; other catalogs and inaccessible collections are listed as coverage gaps.
 * **Structured Facts:** Dates, amounts, and vote tallies are extracted from preserved documents by deterministic rules, pinned to their exact passage and source hash, and confirmed or rejected by a named reviewer. Only confirmed facts feed the comparison and hypothesis engines. Your own uploads are restricted by default; run `python3 server.py --allow-protected` locally to review them.
-* **Governance & Architecture:** Comprehensive structural frameworks (early planning notes, kept in `docs/early-design/` and possibly out of date) defining data hygiene and boundary enforcement.
+* **Governance:** Responsible-use rules, a pre-commit guard that blocks case data, and an append-only audit log (see below).
 
 ## Tech Stack
 
